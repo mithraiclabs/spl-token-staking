@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+pub mod errors;
 pub mod instructions;
 pub mod state;
 
@@ -13,5 +14,9 @@ pub mod single_sided_staking {
 
     pub fn initialize_stake_pool(ctx: Context<InitializeStakePool>, nonce: u8, digit_shift: i8) -> Result<()> {
         initialize_stake_pool::handler(ctx, nonce, digit_shift)
+    }
+
+    pub fn add_reward_pool(ctx: Context<AddRewardPool>, index: u8) -> Result<()> {
+        add_reward_pool::handler(ctx, index)
     }
 }

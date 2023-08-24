@@ -7,7 +7,7 @@ pub const MAX_REWARD_POOLS: usize = 5;
 #[repr(C)]
 pub struct RewardPool {
     /** Token Account to store the reward SPL Token */
-    pub vault: Pubkey,
+    pub reward_vault: Pubkey,
     /** Ever increasing accumulator of the amount of rewards per effective stake.
     Said another way, if a user deposited before any rewards were added to the
     `vault`, then this would be the token amount per effective stake they could
