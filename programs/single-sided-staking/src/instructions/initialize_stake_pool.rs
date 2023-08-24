@@ -32,7 +32,7 @@ pub struct InitializeStakePool<'info> {
       seeds = [&stake_pool.key().to_bytes()[..], b"stakeMint"],
       bump,
       payer = authority,
-      mint::decimals = 6, // TODO
+      mint::decimals = mint.decimals, // TODO account for potential precision errors with digit shift
       mint::authority = stake_pool,
     )]
     pub stake_mint: Account<'info, Mint>,
