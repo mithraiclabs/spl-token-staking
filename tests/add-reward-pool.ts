@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { splTokenProgram } from "@coral-xyz/spl-token";
 import { SingleSidedStaking } from "../target/types/single_sided_staking";
-import { initStakePool, rewardMint1, rewardMint2 } from "./hooks";
+import { airdropSol, initStakePool, rewardMint1, rewardMint2 } from "./hooks";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 
@@ -66,17 +66,7 @@ describe("add-reward-pool", () => {
 
   it("Fail to add RewardPool from incorrect authority", async () => {
     const badAuthority = anchor.web3.Keypair.generate();
-    const txSig = await program.provider.connection.requestAirdrop(
-      badAuthority.publicKey,
-      anchor.web3.LAMPORTS_PER_SOL * 2
-    );
-    const latestBlockHash =
-      await program.provider.connection.getLatestBlockhash();
-    await program.provider.connection.confirmTransaction({
-      blockhash: latestBlockHash.blockhash,
-      lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
-      signature: txSig,
-    });
+    await airdropSol(program.provider.connection, badAuthority.publicKey, 2);
     const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),

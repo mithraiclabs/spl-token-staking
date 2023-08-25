@@ -1,6 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { SingleSidedStaking } from "../target/types/single_sided_staking";
-import { MintLayout, createInitializeMintInstruction } from "@solana/spl-token";
+import {
+  MintLayout,
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
+  createInitializeMintInstruction,
+  createMintToInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
 export let stakeMint: anchor.web3.PublicKey;
@@ -80,6 +87,29 @@ export const mochaHooks = {
           undefined
         )
       );
+
+      // Create associated token account for rewards
+      const reward1TokenAccount = getAssociatedTokenAddressSync(
+        rewardMint1,
+        program.provider.publicKey
+      );
+      tx.add(
+        createAssociatedTokenAccountInstruction(
+          program.provider.publicKey,
+          reward1TokenAccount,
+          program.provider.publicKey,
+          rewardMint1
+        )
+      );
+      // Mint some tokens for rewards to provider
+      tx.add(
+        createMintToInstruction(
+          rewardMint1,
+          reward1TokenAccount,
+          program.provider.publicKey,
+          100_000_000_000
+        )
+      );
       await program.provider.sendAndConfirm(tx, [
         stakeMintKeypair,
         rewardMint1Keypair,
@@ -123,4 +153,57 @@ export const initStakePool = async (
       systemProgram: anchor.web3.SystemProgram.programId,
     })
     .rpc();
+};
+
+export const addRewardPool = async (
+  program: anchor.Program<SingleSidedStaking>,
+  stakePoolNonce: number,
+  rewardMint: anchor.web3.PublicKey,
+  rewardPoolIndex = 0
+) => {
+  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      program.provider.publicKey.toBuffer(),
+      Buffer.from("stakePool", "utf-8"),
+    ],
+    program.programId
+  );
+  const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      rewardMint.toBuffer(),
+      Buffer.from("rewardVault", "utf-8"),
+    ],
+    program.programId
+  );
+  return program.methods
+    .addRewardPool(rewardPoolIndex)
+    .accounts({
+      authority: program.provider.publicKey,
+      rewardMint,
+      stakePool: stakePoolKey,
+      rewardVault: rewardVaultKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .rpc();
+};
+
+export const airdropSol = async (
+  connection: anchor.web3.Connection,
+  receiver: anchor.web3.PublicKey,
+  amountInSol: number
+) => {
+  const txSig = await connection.requestAirdrop(
+    receiver,
+    anchor.web3.LAMPORTS_PER_SOL * amountInSol
+  );
+  const latestBlockHash = await connection.getLatestBlockhash();
+  return connection.confirmTransaction({
+    blockhash: latestBlockHash.blockhash,
+    lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+    signature: txSig,
+  });
 };

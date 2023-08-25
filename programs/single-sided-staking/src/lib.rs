@@ -19,4 +19,8 @@ pub mod single_sided_staking {
     pub fn add_reward_pool(ctx: Context<AddRewardPool>, index: u8) -> Result<()> {
         add_reward_pool::handler(ctx, index)
     }
+
+    pub fn deposit(ctx: Context<Deposit>, nonce: u32, amount: u64, lockup_duration: u64) -> Result<()> {
+        deposit::handler(ctx, nonce, amount, lockup_duration)
+    }
 }
