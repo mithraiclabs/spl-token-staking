@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 import { SingleSidedStaking } from "../target/types/single_sided_staking";
 import { assert } from "chai";
-import { stakeMint } from "./hooks";
+import { mintToBeStaked } from "./hooks";
 
 describe("initialize-stake-pool", () => {
   const program = anchor.workspace
@@ -34,7 +34,7 @@ describe("initialize-stake-pool", () => {
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,
         stakeMint: stakeMintKey,
-        mint: stakeMint,
+        mint: mintToBeStaked,
         vault: vaultKey,
         tokenProgram: SPL_TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,

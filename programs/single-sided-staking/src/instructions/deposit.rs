@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_lang::solana_program::program_option::COption;
+use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use crate::errors::ErrorCode;
 use crate::state::{StakeDepositReceipt, StakePool};
@@ -18,6 +19,19 @@ pub struct Deposit<'info> {
     /// Vault of the StakePool token will be transfer to
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
+
+    #[account(
+      mut,
+      constraint = stake_mint.mint_authority == COption::Some(stake_pool.key()) @ ErrorCode::InvalidAuthority,
+    )]
+    pub stake_mint: Account<'info, Mint>,
+
+    /// Vault of the StakePool token will be transfer to
+    #[account(
+      mut,
+      has_one = owner @ ErrorCode::InvalidAuthority
+    )]
+    pub destination: Account<'info, TokenAccount>,
 
     // StakePool owning the vault that will receive the deposit
     #[account(
@@ -56,6 +70,27 @@ impl<'info> Deposit<'info> {
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)
     }
+
+    pub fn mint_staked_token_to_user(&self, effective_amount: u64) -> Result<()> {
+        let cpi_accounts = MintTo {
+            mint: self.stake_mint.to_account_info(),
+            to: self.destination.to_account_info(),
+            authority: self.stake_pool.to_account_info(),
+        };
+        let mint_signer_seeds: &[&[&[u8]]] = &[&[
+            &[self.stake_pool.nonce],
+            &self.stake_pool.authority.to_bytes(),
+            b"stakePool",
+            &[self.stake_pool.bump_seed],
+        ]];
+        let cpi_ctx = CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            cpi_accounts,
+            mint_signer_seeds,
+        );
+
+        token::mint_to(cpi_ctx, effective_amount)
+    }
 }
 
 pub fn handler<'info>(
@@ -83,5 +118,7 @@ pub fn handler<'info>(
     stake_deposit_receipt.claimed_amounts = stake_pool.get_claimed_amounts_of_reward_pools();
 
     stake_pool.total_weighted_stake = stake_pool.total_weighted_stake.checked_add(amount).unwrap();
+
+    ctx.accounts.mint_staked_token_to_user(amount)?;
     Ok(())
 }

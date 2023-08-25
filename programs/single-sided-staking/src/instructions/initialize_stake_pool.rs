@@ -53,11 +53,13 @@ pub struct InitializeStakePool<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializeStakePool>, _nonce: u8, digit_shift: i8) -> Result<()> {
+pub fn handler(ctx: Context<InitializeStakePool>, nonce: u8, digit_shift: i8) -> Result<()> {
     let stake_pool = &mut ctx.accounts.stake_pool;
     stake_pool.authority = ctx.accounts.authority.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
     stake_pool.digit_shift = digit_shift;
+    stake_pool.nonce = nonce;
+    stake_pool.bump_seed = *ctx.bumps.get("stake_pool").unwrap();
     Ok(())
 }

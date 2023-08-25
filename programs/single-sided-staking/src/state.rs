@@ -43,6 +43,10 @@ pub struct StakePool {
     pub stake_mint: Pubkey,
     /** Array of RewardPools that apply to the stake pool */
     pub reward_pools: [RewardPool; MAX_REWARD_POOLS],
+    /** Nonce to derive multiple stake pools from same mint */
+    pub nonce: u8,
+    /** Bump seed for stake_mint */
+    pub bump_seed: u8,
 }
 
 impl StakePool {

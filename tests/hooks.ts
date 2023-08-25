@@ -10,7 +10,7 @@ import {
 } from "@solana/spl-token";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
-export let stakeMint: anchor.web3.PublicKey;
+export let mintToBeStaked: anchor.web3.PublicKey;
 export let rewardMint1: anchor.web3.PublicKey;
 export let rewardMint2: anchor.web3.PublicKey;
 
@@ -26,7 +26,7 @@ export const mochaHooks = {
       const stakeMintKeypair = anchor.web3.Keypair.generate();
       const rewardMint1Keypair = anchor.web3.Keypair.generate();
       const rewardMint2Keypair = anchor.web3.Keypair.generate();
-      stakeMint = stakeMintKeypair.publicKey;
+      mintToBeStaked = stakeMintKeypair.publicKey;
       rewardMint1 = rewardMint1Keypair.publicKey;
       rewardMint2 = rewardMint2Keypair.publicKey;
       const mintRentExemptBalance =
@@ -38,7 +38,7 @@ export const mochaHooks = {
       tx.add(
         anchor.web3.SystemProgram.createAccount({
           fromPubkey: program.provider.publicKey,
-          newAccountPubkey: stakeMint,
+          newAccountPubkey: mintToBeStaked,
           space: MintLayout.span,
           lamports: mintRentExemptBalance,
           programId: SPL_TOKEN_PROGRAM_ID,
@@ -46,7 +46,7 @@ export const mochaHooks = {
       );
       tx.add(
         createInitializeMintInstruction(
-          stakeMint,
+          mintToBeStaked,
           9,
           program.provider.publicKey,
           undefined
@@ -146,7 +146,7 @@ export const initStakePool = async (
       authority: program.provider.publicKey,
       stakePool: stakePoolKey,
       stakeMint: stakeMintKey,
-      mint: stakeMint,
+      mint: mintToBeStaked,
       vault: vaultKey,
       tokenProgram: SPL_TOKEN_PROGRAM_ID,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
