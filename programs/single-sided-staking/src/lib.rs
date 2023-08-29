@@ -12,7 +12,11 @@ declare_id!("8amutinnwkwN4PuysoSGeRgR9bhhN4waGEx2BSqBDQb4");
 pub mod single_sided_staking {
     use super::*;
 
-    pub fn initialize_stake_pool(ctx: Context<InitializeStakePool>, nonce: u8, digit_shift: i8) -> Result<()> {
+    pub fn initialize_stake_pool(
+        ctx: Context<InitializeStakePool>,
+        nonce: u8,
+        digit_shift: i8,
+    ) -> Result<()> {
         initialize_stake_pool::handler(ctx, nonce, digit_shift)
     }
 
@@ -20,7 +24,16 @@ pub mod single_sided_staking {
         add_reward_pool::handler(ctx, index)
     }
 
-    pub fn deposit(ctx: Context<Deposit>, nonce: u32, amount: u64, lockup_duration: u64) -> Result<()> {
+    pub fn deposit(
+        ctx: Context<Deposit>,
+        nonce: u32,
+        amount: u64,
+        lockup_duration: u64,
+    ) -> Result<()> {
         deposit::handler(ctx, nonce, amount, lockup_duration)
+    }
+
+    pub fn claim_all<'info>(ctx: Context<'_, '_, '_, 'info, ClaimAll<'info>>) -> Result<()> {
+        claim_all::handler(ctx)
     }
 }

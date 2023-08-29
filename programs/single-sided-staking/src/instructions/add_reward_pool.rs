@@ -18,9 +18,9 @@ pub struct AddRewardPool<'info> {
   #[account(
     mut, 
     has_one = authority @ ErrorCode::InvalidAuthority,
-    constraint = stake_pool.reward_pools[usize::from(index)].reward_vault == Pubkey::default() @ ErrorCode::RewardPoolIndexOccupied,
+    constraint = stake_pool.load()?.reward_pools[usize::from(index)].reward_vault == Pubkey::default() @ ErrorCode::RewardPoolIndexOccupied,
   )]
-  pub stake_pool: Account<'info, StakePool>,
+  pub stake_pool: AccountLoader<'info, StakePool>,
 
   /// An SPL token Account for holding rewards to be claimed
   #[account(
@@ -39,12 +39,8 @@ pub struct AddRewardPool<'info> {
 }
 
 pub fn handler(ctx: Context<AddRewardPool>, index: u8) -> Result<()> {
-  let stake_pool = &mut ctx.accounts.stake_pool;
-  let reward_pool = RewardPool {
-    rewards_per_effective_stake: 0,
-    reward_vault: ctx.accounts.reward_vault.key(),
-    last_amount: 0,
-  };
+  let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
+  let reward_pool = RewardPool::new(&ctx.accounts.reward_vault.key());
   stake_pool.reward_pools[usize::from(index)] = reward_pool;
 
   Ok(())

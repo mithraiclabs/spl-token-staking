@@ -1,9 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
 import { splTokenProgram } from "@coral-xyz/spl-token";
 import { SingleSidedStaking } from "../target/types/single_sided_staking";
-import { airdropSol, initStakePool, rewardMint1, rewardMint2 } from "./hooks";
+import { airdropSol, mintToBeStaked, rewardMint1, rewardMint2 } from "./hooks";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
+import { initStakePool } from "./utils";
 
 describe("add-reward-pool", () => {
   const program = anchor.workspace
@@ -12,7 +13,7 @@ describe("add-reward-pool", () => {
   const stakePoolNonce = 2;
 
   before(async () => {
-    await initStakePool(program, stakePoolNonce);
+    await initStakePool(program, mintToBeStaked, stakePoolNonce);
   });
 
   it("RewardPool added to StakePool", async () => {

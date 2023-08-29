@@ -1100,6 +1100,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
+name = "jet-proto-proc-macros"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eab4c6fd9509fa9c5e6f329363fe47aa77343a5d0b2f82db5a5a2c1e7e3ef6d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "static_assertions",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1758,6 +1770,9 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "bytemuck",
+ "jet-proto-proc-macros",
+ "static_assertions",
 ]
 
 [[package]]
@@ -2039,6 +2054,12 @@ dependencies = [
  "spl-token",
  "thiserror",
 ]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"

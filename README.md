@@ -25,7 +25,7 @@ Said another way, if a user deposited before any rewards were added to the
 `vault`, then this would be the token amount per effective stake they could 
 claim.
 */
-rewards_per_effective_stake: u64,
+rewards_per_effective_stake: u128,
 /** latest amount of tokens in the vault */
 last_amount: u64
 ```
@@ -41,7 +41,7 @@ losing some precision. The StakePool authority can set this precision */
 digit_shift: i8,
 /** Total amount staked that accounts for the lock up period weighting.
 Note, this is not equal to the amount of SPL Tokens staked. */
-total_weighted_stake: u64,
+total_weighted_stake: u128,
 /** Token Account to store the staked SPL Token */
 vault: Pubkey,
 /** Mint of the token representing effective stake */
@@ -67,7 +67,7 @@ deposit_amount: u64,
 effective_stake: u128,
 /** The amount per reward that has been claimed or perceived to be claimed.
 Indexes align with the StakedPool reward_pools property. */
-claimed_amounts: Vec<u64>
+claimed_amounts: Vec<u128>
 ```
 
 ## Instructions

@@ -10,9 +10,12 @@ import {
 } from "@solana/spl-token";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
-export let mintToBeStaked: anchor.web3.PublicKey;
-export let rewardMint1: anchor.web3.PublicKey;
-export let rewardMint2: anchor.web3.PublicKey;
+const stakeMintKeypair = anchor.web3.Keypair.generate();
+const rewardMint1Keypair = anchor.web3.Keypair.generate();
+const rewardMint2Keypair = anchor.web3.Keypair.generate();
+export const mintToBeStaked = stakeMintKeypair.publicKey;
+export const rewardMint1 = rewardMint1Keypair.publicKey;
+export const rewardMint2 = rewardMint2Keypair.publicKey;
 
 export const mochaHooks = {
   /* Before hook to run before all tests */
@@ -23,12 +26,6 @@ export const mochaHooks = {
 
       const program = anchor.workspace
         .SingleSidedStaking as anchor.Program<SingleSidedStaking>;
-      const stakeMintKeypair = anchor.web3.Keypair.generate();
-      const rewardMint1Keypair = anchor.web3.Keypair.generate();
-      const rewardMint2Keypair = anchor.web3.Keypair.generate();
-      mintToBeStaked = stakeMintKeypair.publicKey;
-      rewardMint1 = rewardMint1Keypair.publicKey;
-      rewardMint2 = rewardMint2Keypair.publicKey;
       const mintRentExemptBalance =
         await program.provider.connection.getMinimumBalanceForRentExemption(
           MintLayout.span
@@ -110,6 +107,27 @@ export const mochaHooks = {
           100_000_000_000
         )
       );
+      const reward2TokenAccount = getAssociatedTokenAddressSync(
+        rewardMint2,
+        program.provider.publicKey
+      );
+      tx.add(
+        createAssociatedTokenAccountInstruction(
+          program.provider.publicKey,
+          reward2TokenAccount,
+          program.provider.publicKey,
+          rewardMint2
+        )
+      );
+      // Mint some tokens for rewards to provider
+      tx.add(
+        createMintToInstruction(
+          rewardMint2,
+          reward2TokenAccount,
+          program.provider.publicKey,
+          100_000_000_000
+        )
+      );
       await program.provider.sendAndConfirm(tx, [
         stakeMintKeypair,
         rewardMint1Keypair,
@@ -117,78 +135,6 @@ export const mochaHooks = {
       ]);
     },
   ],
-};
-
-export const initStakePool = async (
-  program: anchor.Program<SingleSidedStaking>,
-  nonce = 0,
-  digitShift = 0
-) => {
-  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      new anchor.BN(nonce).toArrayLike(Buffer, "le", 1),
-      program.provider.publicKey.toBuffer(),
-      Buffer.from("stakePool", "utf-8"),
-    ],
-    program.programId
-  );
-  const [stakeMintKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
-  const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-    program.programId
-  );
-  await program.methods
-    .initializeStakePool(nonce, digitShift)
-    .accounts({
-      authority: program.provider.publicKey,
-      stakePool: stakePoolKey,
-      stakeMint: stakeMintKey,
-      mint: mintToBeStaked,
-      vault: vaultKey,
-      tokenProgram: SPL_TOKEN_PROGRAM_ID,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    })
-    .rpc();
-};
-
-export const addRewardPool = async (
-  program: anchor.Program<SingleSidedStaking>,
-  stakePoolNonce: number,
-  rewardMint: anchor.web3.PublicKey,
-  rewardPoolIndex = 0
-) => {
-  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
-      program.provider.publicKey.toBuffer(),
-      Buffer.from("stakePool", "utf-8"),
-    ],
-    program.programId
-  );
-  const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      stakePoolKey.toBuffer(),
-      rewardMint.toBuffer(),
-      Buffer.from("rewardVault", "utf-8"),
-    ],
-    program.programId
-  );
-  return program.methods
-    .addRewardPool(rewardPoolIndex)
-    .accounts({
-      authority: program.provider.publicKey,
-      rewardMint,
-      stakePool: stakePoolKey,
-      rewardVault: rewardVaultKey,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    })
-    .rpc();
 };
 
 export const airdropSol = async (
@@ -206,4 +152,76 @@ export const airdropSol = async (
     lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
     signature: txSig,
   });
+};
+
+/**
+ * Setup a Depositor with SOL, token to be staked, and account for stake mint
+ */
+export const createDepositorSplAccounts = async (
+  program: anchor.Program<SingleSidedStaking>,
+  depositor: anchor.web3.Keypair,
+  stakePoolNonce: number
+) => {
+  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      program.provider.publicKey.toBuffer(),
+      Buffer.from("stakePool", "utf-8"),
+    ],
+    program.programId
+  );
+  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
+    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
+    program.programId
+  );
+  const stakeMintAccountKey = getAssociatedTokenAddressSync(
+    stakeMint,
+    depositor.publicKey,
+    false,
+    TOKEN_PROGRAM_ID
+  );
+  const mintToBeStakedAccount = getAssociatedTokenAddressSync(
+    mintToBeStaked,
+    depositor.publicKey,
+    false,
+    TOKEN_PROGRAM_ID
+  );
+  const createMintToBeStakedAccountIx = createAssociatedTokenAccountInstruction(
+    program.provider.publicKey,
+    mintToBeStakedAccount,
+    depositor.publicKey,
+    mintToBeStaked,
+    TOKEN_PROGRAM_ID
+  );
+  // mint 10 stakeMint to provider wallet
+  const mintIx = createMintToInstruction(
+    mintToBeStaked,
+    mintToBeStakedAccount,
+    program.provider.publicKey,
+    10_000_000_000,
+    undefined,
+    TOKEN_PROGRAM_ID
+  );
+  const mintTx = new anchor.web3.Transaction()
+    .add(createMintToBeStakedAccountIx)
+    .add(mintIx);
+  // set up depositor account and stake pool account
+  await Promise.all([
+    airdropSol(program.provider.connection, depositor.publicKey, 2),
+    program.provider.sendAndConfirm(mintTx),
+  ]);
+  const createStakeMintAccountIx = createAssociatedTokenAccountInstruction(
+    program.provider.publicKey,
+    stakeMintAccountKey,
+    depositor.publicKey,
+    stakeMint,
+    TOKEN_PROGRAM_ID
+  );
+  const createStakeMintAccountTx = new anchor.web3.Transaction().add(
+    createStakeMintAccountIx
+  );
+  // add reward pool to the initialized stake pool
+  await program.provider.sendAndConfirm(createStakeMintAccountTx);
+
+  return depositor;
 };

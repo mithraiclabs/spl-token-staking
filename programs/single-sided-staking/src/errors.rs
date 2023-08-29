@@ -12,6 +12,10 @@ pub enum ErrorCode {
   InvalidRewardPoolVault, // 6003
   #[msg("Invalid RewardPool vault remaining account index")]
   InvalidRewardPoolVaultIndex, // 6004
-  #[msg("Bad math")]
-  ArithmeticError, // 6005
+  #[msg("Invalid StakeDepositReceiptOwner")]
+  InvalidOwner, // 6005
+  #[msg("Invalid StakePool")]
+  InvalidStakePool, // 6006
+  #[msg("Math precision error")]
+  PrecisionMath, // 6006
 }

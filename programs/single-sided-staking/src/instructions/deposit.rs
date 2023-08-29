@@ -38,7 +38,7 @@ pub struct Deposit<'info> {
       mut,
       has_one = vault @ ErrorCode::InvalidStakePoolVault,
     )]
-    pub stake_pool: Account<'info, StakePool>,
+    pub stake_pool: AccountLoader<'info, StakePool>,
 
     #[account(
       init,
@@ -72,16 +72,17 @@ impl<'info> Deposit<'info> {
     }
 
     pub fn mint_staked_token_to_user(&self, effective_amount: u64) -> Result<()> {
+        let stake_pool = self.stake_pool.load()?;
         let cpi_accounts = MintTo {
             mint: self.stake_mint.to_account_info(),
             to: self.destination.to_account_info(),
             authority: self.stake_pool.to_account_info(),
         };
         let mint_signer_seeds: &[&[&[u8]]] = &[&[
-            &[self.stake_pool.nonce],
-            &self.stake_pool.authority.to_bytes(),
+            &[stake_pool.nonce],
+            &stake_pool.authority.to_bytes(),
             b"stakePool",
-            &[self.stake_pool.bump_seed],
+            &[stake_pool.bump_seed],
         ]];
         let cpi_ctx = CpiContext::new_with_signer(
             self.token_program.to_account_info(),
@@ -101,23 +102,30 @@ pub fn handler<'info>(
 ) -> Result<()> {
     ctx.accounts.transfer_from_user_to_stake_vault(amount)?;
 
-    let stake_pool = &mut ctx.accounts.stake_pool;
-    let stake_deposit_receipt = &mut ctx.accounts.stake_deposit_receipt;
+    {
+        let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
+        let stake_deposit_receipt = &mut ctx.accounts.stake_deposit_receipt;
 
-    stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts)?;
+        stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 1usize)?;
 
-    stake_deposit_receipt.stake_pool = stake_pool.key();
-    stake_deposit_receipt.owner = ctx.accounts.owner.key();
-    stake_deposit_receipt.deposit_amount = amount;
-    // TODO scale based on lockup duration
-    stake_deposit_receipt.effective_stake = amount;
-    stake_deposit_receipt.lockup_duration = lockup_duration;
-    stake_deposit_receipt.deposit_timestamp = Clock::get()?.unix_timestamp;
+        let effect_amount_staked = u128::from(amount);
 
-    // iterate over reward pools setting the initial "claimed" amount based on `rewards_per_effective_stake`.
-    stake_deposit_receipt.claimed_amounts = stake_pool.get_claimed_amounts_of_reward_pools();
+        stake_deposit_receipt.stake_pool = ctx.accounts.stake_pool.key();
+        stake_deposit_receipt.owner = ctx.accounts.owner.key();
+        stake_deposit_receipt.deposit_amount = amount;
+        // TODO scale based on lockup duration
+        stake_deposit_receipt.effective_stake = effect_amount_staked;
+        stake_deposit_receipt.lockup_duration = lockup_duration;
+        stake_deposit_receipt.deposit_timestamp = Clock::get()?.unix_timestamp;
 
-    stake_pool.total_weighted_stake = stake_pool.total_weighted_stake.checked_add(amount).unwrap();
+        // iterate over reward pools setting the initial "claimed" amount based on `rewards_per_effective_stake`.
+        stake_deposit_receipt.claimed_amounts = stake_pool.get_claimed_amounts_of_reward_pools();
+
+        stake_pool.total_weighted_stake = stake_pool
+            .total_weighted_stake
+            .checked_add(effect_amount_staked)
+            .unwrap();
+    }
 
     ctx.accounts.mint_staked_token_to_user(amount)?;
     Ok(())

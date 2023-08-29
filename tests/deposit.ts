@@ -3,19 +3,18 @@ import { splTokenProgram } from "@coral-xyz/spl-token";
 import { SingleSidedStaking } from "../target/types/single_sided_staking";
 import { assert } from "chai";
 import {
-  addRewardPool,
-  airdropSol,
-  initStakePool,
   rewardMint1,
   mintToBeStaked,
+  createDepositorSplAccounts,
 } from "./hooks";
 import {
   getAssociatedTokenAddressSync,
-  createMintToInstruction,
   TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
   createTransferInstruction,
 } from "@solana/spl-token";
+import { SCALE_FACTOR_BASE, addRewardPool, initStakePool } from "./utils";
+
+const scaleFactorBN = new anchor.BN(SCALE_FACTOR_BASE);
 
 describe("deposit", () => {
   const program = anchor.workspace
@@ -32,79 +31,50 @@ describe("deposit", () => {
     ],
     program.programId
   );
-  const [stakeMint, stakeMintBump] =
-    anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-      program.programId
-    );
+  const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
+    program.programId
+  );
+  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
+    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
+    program.programId
+  );
+  const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      rewardMint1.toBuffer(),
+      Buffer.from("rewardVault", "utf-8"),
+    ],
+    program.programId
+  );
   const stakeMintAccountKey = getAssociatedTokenAddressSync(
     stakeMint,
     depositor.publicKey,
     false,
     TOKEN_PROGRAM_ID
   );
-  let mintToBeStakedAccount: anchor.web3.PublicKey;
+  const mintToBeStakedAccount = getAssociatedTokenAddressSync(
+    mintToBeStaked,
+    depositor.publicKey,
+    false,
+    TOKEN_PROGRAM_ID
+  );
   const deposit1Amount = new anchor.BN(5_000_000_000);
   const deposit2Amount = new anchor.BN(1_000_000_000);
 
   before(async () => {
-    mintToBeStakedAccount = getAssociatedTokenAddressSync(
-      mintToBeStaked,
-      depositor.publicKey,
-      false,
-      TOKEN_PROGRAM_ID
-    );
-    const createMintToBeStakedAccountIx =
-      createAssociatedTokenAccountInstruction(
-        program.provider.publicKey,
-        mintToBeStakedAccount,
-        depositor.publicKey,
-        mintToBeStaked,
-        TOKEN_PROGRAM_ID
-      );
-    // mint 10 stakeMint to provider wallet
-    const mintIx = createMintToInstruction(
-      mintToBeStaked,
-      mintToBeStakedAccount,
-      program.provider.publicKey,
-      10_000_000_000,
-      undefined,
-      TOKEN_PROGRAM_ID
-    );
-    const mintTx = new anchor.web3.Transaction()
-      .add(createMintToBeStakedAccountIx)
-      .add(mintIx);
     // set up depositor account and stake pool account
     await Promise.all([
-      airdropSol(program.provider.connection, depositor.publicKey, 2),
-      program.provider.sendAndConfirm(mintTx),
-      initStakePool(program, stakePoolNonce),
+      createDepositorSplAccounts(program, depositor, stakePoolNonce),
+      initStakePool(program, mintToBeStaked, stakePoolNonce),
     ]);
-    const createStakeMintAccountIx = createAssociatedTokenAccountInstruction(
-      program.provider.publicKey,
-      stakeMintAccountKey,
-      depositor.publicKey,
-      stakeMint,
-      TOKEN_PROGRAM_ID
-    );
-    const createStakeMintAccountTx = new anchor.web3.Transaction().add(
-      createStakeMintAccountIx
-    );
     // add reward pool to the initialized stake pool
-    await Promise.all([
-      addRewardPool(program, stakePoolNonce, rewardMint1),
-      program.provider.sendAndConfirm(createStakeMintAccountTx),
-    ]);
+    await Promise.all([addRewardPool(program, stakePoolNonce, rewardMint1)]);
   });
 
   it("First Deposit (5) successful", async () => {
-    console.log("bump ", stakeMintBump, stakePoolKey.toString());
     const receiptNonce = 0;
     const duration = new anchor.BN(1000);
-    const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-      program.programId
-    );
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor.publicKey.toBuffer(),
@@ -177,24 +147,12 @@ describe("deposit", () => {
   it("Second Deposit (1) recalculates effective reward per stake", async () => {
     const receiptNonce = 1;
     const duration = new anchor.BN(1000);
-    const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-      program.programId
-    );
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor.publicKey.toBuffer(),
         stakePoolKey.toBuffer(),
         new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
         Buffer.from("stakeDepositReceipt", "utf-8"),
-      ],
-      program.programId
-    );
-    const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        stakePoolKey.toBuffer(),
-        rewardMint1.toBuffer(),
-        Buffer.from("rewardVault", "utf-8"),
       ],
       program.programId
     );
@@ -258,7 +216,10 @@ describe("deposit", () => {
         // RewardPool 0 should have some claimed amount, so must assert non zero
         assert.equal(
           claimed.toString(),
-          rewardsPerEffectiveStake.toString(),
+          rewardsPerEffectiveStake
+            .mul(scaleFactorBN)
+            .mul(scaleFactorBN)
+            .toString(),
           "incorrect rewwards per effective stake"
         );
       } else {
@@ -278,7 +239,6 @@ describe("deposit", () => {
     );
   });
 
-  // TODO handle scaling precision loss
   // it("should handle overflow", async () => {
   //   assert.isTrue(false);
   // });

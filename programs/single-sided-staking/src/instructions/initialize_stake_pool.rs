@@ -24,7 +24,7 @@ pub struct InitializeStakePool<'info> {
       payer = authority,
       space = 8 + StakePool::LEN,
     )]
-    pub stake_pool: Account<'info, StakePool>,
+    pub stake_pool: AccountLoader<'info, StakePool>,
 
     /// An SPL token Mint for the effective stake weight token
     #[account(
@@ -32,7 +32,7 @@ pub struct InitializeStakePool<'info> {
       seeds = [&stake_pool.key().to_bytes()[..], b"stakeMint"],
       bump,
       payer = authority,
-      mint::decimals = mint.decimals, // TODO account for potential precision errors with digit shift
+      mint::decimals = mint.decimals,
       mint::authority = stake_pool,
     )]
     pub stake_mint: Account<'info, Mint>,
@@ -54,7 +54,7 @@ pub struct InitializeStakePool<'info> {
 }
 
 pub fn handler(ctx: Context<InitializeStakePool>, nonce: u8, digit_shift: i8) -> Result<()> {
-    let stake_pool = &mut ctx.accounts.stake_pool;
+    let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
     stake_pool.authority = ctx.accounts.authority.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
