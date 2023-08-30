@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
-use bytemuck::{Zeroable, Pod};
+use bytemuck::{Pod, Zeroable};
 use jet_proc_macros::assert_size;
 
 use crate::errors::ErrorCode;
@@ -160,4 +160,38 @@ pub struct StakeDepositReceipt {
 
 impl StakeDepositReceipt {
     pub const LEN: usize = std::mem::size_of::<StakeDepositReceipt>();
+
+    pub fn get_stake_weight(_duration: u64) -> u64 {
+        SCALE_FACTOR_BASE // return 1
+    }
+
+    /// Amount staked multiplied by weight
+    pub fn get_effective_stake_amount(amount: u64, duration: u64) -> u128 {
+        let weight = StakeDepositReceipt::get_stake_weight(duration);
+        u128::from(amount).checked_mul(u128::from(weight)).unwrap()
+    }
+
+    /// Effective stake converted to u64 token amount
+    pub fn get_token_amount_from_stake(effective_stake: u128, duration: u64) -> u64 {
+        let weight = StakeDepositReceipt::get_stake_weight(duration);
+        effective_stake
+            .checked_div(u128::from(weight))
+            .unwrap()
+            .try_into()
+            .unwrap()
+    }
+
+    /// Throw error if the StakeDepositReceipt is still locked
+    pub fn validate_unlocked(&self) -> Result<()> {
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        if current_timestamp
+            < self
+                .deposit_timestamp
+                .checked_add(self.lockup_duration.try_into().unwrap())
+                .unwrap()
+        {
+            return Err(ErrorCode::StakeStillLocked.into());
+        }
+        Ok(())
+    }
 }

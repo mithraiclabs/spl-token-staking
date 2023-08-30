@@ -36,4 +36,8 @@ pub mod single_sided_staking {
     pub fn claim_all<'info>(ctx: Context<'_, '_, '_, 'info, ClaimAll<'info>>) -> Result<()> {
         claim_all::handler(ctx)
     }
+
+    pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
+        withdraw::handler(ctx)
+    }
 }

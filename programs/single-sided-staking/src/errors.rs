@@ -17,5 +17,9 @@ pub enum ErrorCode {
   #[msg("Invalid StakePool")]
   InvalidStakePool, // 6006
   #[msg("Math precision error")]
-  PrecisionMath, // 6006
+  PrecisionMath, // 6007
+  #[msg("Invalid stake mint")]
+  InvalidStakeMint, // 6008
+  #[msg("Stake is still locked")]
+  StakeStillLocked, // 6009
 }

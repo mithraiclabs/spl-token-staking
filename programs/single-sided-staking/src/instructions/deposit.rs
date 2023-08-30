@@ -101,14 +101,14 @@ pub fn handler<'info>(
     lockup_duration: u64,
 ) -> Result<()> {
     ctx.accounts.transfer_from_user_to_stake_vault(amount)?;
+    let effect_amount_staked =
+        StakeDepositReceipt::get_effective_stake_amount(amount, lockup_duration);
 
     {
         let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
         let stake_deposit_receipt = &mut ctx.accounts.stake_deposit_receipt;
 
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 1usize)?;
-
-        let effect_amount_staked = u128::from(amount);
 
         stake_deposit_receipt.stake_pool = ctx.accounts.stake_pool.key();
         stake_deposit_receipt.owner = ctx.accounts.owner.key();
@@ -127,6 +127,8 @@ pub fn handler<'info>(
             .unwrap();
     }
 
-    ctx.accounts.mint_staked_token_to_user(amount)?;
+    let effect_amount_staked_tokens =
+        StakeDepositReceipt::get_token_amount_from_stake(effect_amount_staked, lockup_duration);
+    ctx.accounts.mint_staked_token_to_user(effect_amount_staked_tokens)?;
     Ok(())
 }

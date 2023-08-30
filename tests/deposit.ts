@@ -134,13 +134,13 @@ describe("deposit", () => {
     assert.isTrue(stakeReceipt.depositTimestamp.gt(new anchor.BN(0)));
     assert.equal(
       stakeReceipt.effectiveStake.toString(),
-      deposit1Amount.toString()
+      deposit1Amount.mul(scaleFactorBN).toString()
     );
     assert.equal(stakeReceipt.lockupDuration.toString(), duration.toString());
 
     assert.equal(
       stakePool.totalWeightedStake.toString(),
-      deposit1Amount.toString()
+      deposit1Amount.mul(scaleFactorBN).toString()
     );
   });
 
@@ -216,10 +216,7 @@ describe("deposit", () => {
         // RewardPool 0 should have some claimed amount, so must assert non zero
         assert.equal(
           claimed.toString(),
-          rewardsPerEffectiveStake
-            .mul(scaleFactorBN)
-            .mul(scaleFactorBN)
-            .toString(),
+          rewardsPerEffectiveStake.mul(scaleFactorBN).toString(),
           "incorrect rewwards per effective stake"
         );
       } else {
@@ -229,17 +226,16 @@ describe("deposit", () => {
     assert.isTrue(stakeReceipt.depositTimestamp.gt(new anchor.BN(0)));
     assert.equal(
       stakeReceipt.effectiveStake.toString(),
-      deposit2Amount.toString()
+      deposit2Amount.mul(scaleFactorBN).toString()
     );
     assert.equal(stakeReceipt.lockupDuration.toString(), duration.toString());
 
     assert.equal(
       stakePool.totalWeightedStake.toString(),
-      deposit1Amount.add(deposit2Amount).toString()
+      deposit1Amount
+        .mul(scaleFactorBN)
+        .add(deposit2Amount.mul(scaleFactorBN))
+        .toString()
     );
   });
-
-  // it("should handle overflow", async () => {
-  //   assert.isTrue(false);
-  // });
 });

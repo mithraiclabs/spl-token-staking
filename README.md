@@ -118,5 +118,7 @@ claimed_amounts: Vec<u128>
 - Transfer `deposit_amount` from `vault` to `owner`
 - Delete **StakeDepositReceipt**
 
-### Addressing issues with u64 precision and weighted staking amount
-If the maximum amount of an SPL token were to be staked and weighted > 1, then the u64 would overflow. In order to address this, we will use a `digit_shift` property in the StakePool config to handle potential overflow by dropping some precision. This is similar to how the Voter Stake Registry works.
+### Potential Ideas
+- Support various scaling functions.
+- Set max number of RewardPools when setting up StakePool. An optimization for organizations that know they will only ever want to distribute a single SPL Token as rewards to stakers.
+- Allow for locking rewards based on duration. This is another incentive mechanism for getting wallets to stake for longer durations.
