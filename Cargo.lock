@@ -1765,17 +1765,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 
 [[package]]
-name = "single-sided-staking"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "bytemuck",
- "jet-proto-proc-macros",
- "static_assertions",
-]
-
-[[package]]
 name = "sized-chunks"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2053,6 +2042,17 @@ dependencies = [
  "spl-memo",
  "spl-token",
  "thiserror",
+]
+
+[[package]]
+name = "spl-token-staking"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bytemuck",
+ "jet-proto-proc-macros",
+ "static_assertions",
 ]
 
 [[package]]

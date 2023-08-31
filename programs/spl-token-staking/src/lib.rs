@@ -9,7 +9,7 @@ use crate::instructions::*;
 declare_id!("8amutinnwkwN4PuysoSGeRgR9bhhN4waGEx2BSqBDQb4");
 
 #[program]
-pub mod single_sided_staking {
+pub mod spl_token_staking {
     use super::*;
 
     pub fn initialize_stake_pool(

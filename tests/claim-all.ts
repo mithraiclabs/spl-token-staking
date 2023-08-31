@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { splTokenProgram } from "@coral-xyz/spl-token";
-import { SingleSidedStaking } from "../target/types/single_sided_staking";
+import { SplTokenStaking } from "../target/types/spl_token_staking";
 import {
   createDepositorSplAccounts,
   mintToBeStaked,
@@ -18,7 +18,7 @@ import { addRewardPool, deposit, initStakePool } from "./utils";
 
 describe("claim-all", () => {
   const program = anchor.workspace
-    .SingleSidedStaking as anchor.Program<SingleSidedStaking>;
+    .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgramInstance = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
   const depositor1 = new anchor.web3.Keypair();
   const depositor2 = new anchor.web3.Keypair();

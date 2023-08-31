@@ -1,13 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
-import { SingleSidedStaking } from "../target/types/single_sided_staking";
+import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { assert } from "chai";
 import { mintToBeStaked } from "./hooks";
 import { SCALE_FACTOR_BASE } from "./utils";
 
 describe("initialize-stake-pool", () => {
   const program = anchor.workspace
-    .SingleSidedStaking as anchor.Program<SingleSidedStaking>;
+    .SplTokenStaking as anchor.Program<SplTokenStaking>;
 
   const nonce = 1;
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(

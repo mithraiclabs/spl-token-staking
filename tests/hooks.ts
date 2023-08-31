@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { SingleSidedStaking } from "../target/types/single_sided_staking";
+import { SplTokenStaking } from "../target/types/spl_token_staking";
 import {
   MintLayout,
   TOKEN_PROGRAM_ID,
@@ -25,7 +25,7 @@ export const mochaHooks = {
       anchor.setProvider(anchor.AnchorProvider.env());
 
       const program = anchor.workspace
-        .SingleSidedStaking as anchor.Program<SingleSidedStaking>;
+        .SplTokenStaking as anchor.Program<SplTokenStaking>;
       const mintRentExemptBalance =
         await program.provider.connection.getMinimumBalanceForRentExemption(
           MintLayout.span
@@ -158,7 +158,7 @@ export const airdropSol = async (
  * Setup a Depositor with SOL, token to be staked, and account for stake mint
  */
 export const createDepositorSplAccounts = async (
-  program: anchor.Program<SingleSidedStaking>,
+  program: anchor.Program<SplTokenStaking>,
   depositor: anchor.web3.Keypair,
   stakePoolNonce: number
 ) => {

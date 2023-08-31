@@ -1,4 +1,4 @@
-# Single Sided Staking
+# SPL Token Staking
 
 Built in collaboration with
 
@@ -7,7 +7,7 @@ Built in collaboration with
 
 ## Program Architecture
 
-Working document for the architecture of a Single Sided Staking program that tokenizes the stake.
+Working document for the architecture of a SPL Token Staking program that tokenizes the stake for use in SPL Governance.
 
 Caveats:
 

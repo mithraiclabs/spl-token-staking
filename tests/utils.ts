@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import IDL from "../target/idl/single_sided_staking.json";
-import { SingleSidedStaking } from "../target/types/single_sided_staking";
+import IDL from "../target/idl/spl_token_staking.json";
+import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
 export const SCALE_FACTOR_BASE = 1_000_000_000;
@@ -14,7 +14,7 @@ export const getMaxNumberOfRewardPools = () =>
   ).find((_type) => _type.name === "rewardPools").type.array[1];
 
 export const initStakePool = async (
-  program: anchor.Program<SingleSidedStaking>,
+  program: anchor.Program<SplTokenStaking>,
   mint: anchor.web3.PublicKey,
   nonce = 0,
   digitShift = 0,
@@ -62,7 +62,7 @@ export const initStakePool = async (
 };
 
 export const addRewardPool = async (
-  program: anchor.Program<SingleSidedStaking>,
+  program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
   rewardMint: anchor.web3.PublicKey,
   rewardPoolIndex = 0
@@ -98,7 +98,7 @@ export const addRewardPool = async (
 };
 
 export const deposit = async (
-  program: anchor.Program<SingleSidedStaking>,
+  program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
   depositor: anchor.web3.Keypair,
   vaultMintAccount: anchor.web3.PublicKey,

@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { splTokenProgram } from "@coral-xyz/spl-token";
-import { SingleSidedStaking } from "../target/types/single_sided_staking";
+import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { assert } from "chai";
 import {
   rewardMint1,
@@ -18,7 +18,7 @@ const scaleFactorBN = new anchor.BN(SCALE_FACTOR_BASE);
 
 describe("deposit", () => {
   const program = anchor.workspace
-    .SingleSidedStaking as anchor.Program<SingleSidedStaking>;
+    .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgram = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
   const depositor = new anchor.web3.Keypair();
 
