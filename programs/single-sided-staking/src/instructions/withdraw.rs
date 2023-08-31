@@ -79,7 +79,6 @@ impl<'info> Withdraw<'info> {
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         let effective_stake_token_amount = StakeDepositReceipt::get_token_amount_from_stake(
             self.stake_deposit_receipt.effective_stake,
-            self.stake_deposit_receipt.lockup_duration,
         );
         token::burn(cpi_ctx, effective_stake_token_amount)
     }

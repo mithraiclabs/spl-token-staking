@@ -8,6 +8,7 @@ use crate::errors::ErrorCode;
 /** Maximum number of RewardPools on a StakePool. */
 pub const MAX_REWARD_POOLS: usize = 5;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
+pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 
 #[assert_size(64)]
 #[derive(Clone, Copy, Default, AnchorDeserialize, AnchorSerialize, Pod, Zeroable)]
@@ -37,7 +38,7 @@ impl RewardPool {
     }
 }
 
-#[assert_size(448)]
+#[assert_size(480)]
 #[account(zero_copy)]
 #[repr(C)]
 pub struct StakePool {
@@ -52,6 +53,14 @@ pub struct StakePool {
     pub stake_mint: Pubkey,
     /** Array of RewardPools that apply to the stake pool */
     pub reward_pools: [RewardPool; MAX_REWARD_POOLS],
+    /** Base weight for staking lockup. In terms of 1 / SCALE_FACTOR_BASE */
+    pub base_weight: u64,
+    /** Maximum weight for staking lockup (i.e. weight multiplier when locked up for max duration). In terms of 1 / SCALE_FACTOR_BASE */
+    pub max_weight: u64,
+    /** Minimum duration for lockup. At this point, the staker would receive the base weight. */
+    pub min_duration: u64,
+    /** Maximum duration for lockup. At this point, the staker would receive the max weight. */
+    pub max_duration: u64,
     /** Since the amount of weighted stake can exceed a u64 if the max integer of
     SPL Token amount were deposited and lockedup, we must account for overflow by
     losing some precision. The StakePool authority can set this precision */
@@ -137,6 +146,25 @@ impl StakePool {
         }
         Ok(())
     }
+
+    /// Calculate the stake weight based on a given duration for the current StakePool
+    pub fn get_stake_weight(&self, duration: u64) -> u64 {
+        let duration_span = self.max_duration.checked_sub(self.min_duration).unwrap();
+        let duration_exceeding_min = duration.checked_sub(self.min_duration).unwrap();
+        let scaled_duration_ratio = duration_exceeding_min
+            // must scale to account for decimals
+            .checked_mul(SCALE_FACTOR_BASE)
+            .unwrap()
+            .checked_div(duration_span)
+            .unwrap();
+        let calculated_weight = scaled_duration_ratio
+            .checked_mul(self.max_weight)
+            .unwrap()
+            .checked_div(SCALE_FACTOR_BASE)
+            .unwrap();
+
+        u64::max(calculated_weight, self.base_weight)
+    }
 }
 
 #[account]
@@ -161,21 +189,15 @@ pub struct StakeDepositReceipt {
 impl StakeDepositReceipt {
     pub const LEN: usize = std::mem::size_of::<StakeDepositReceipt>();
 
-    pub fn get_stake_weight(_duration: u64) -> u64 {
-        SCALE_FACTOR_BASE // return 1
-    }
-
     /// Amount staked multiplied by weight
-    pub fn get_effective_stake_amount(amount: u64, duration: u64) -> u128 {
-        let weight = StakeDepositReceipt::get_stake_weight(duration);
+    pub fn get_effective_stake_amount(weight: u64, amount: u64) -> u128 {
         u128::from(amount).checked_mul(u128::from(weight)).unwrap()
     }
 
     /// Effective stake converted to u64 token amount
-    pub fn get_token_amount_from_stake(effective_stake: u128, duration: u64) -> u64 {
-        let weight = StakeDepositReceipt::get_stake_weight(duration);
+    pub fn get_token_amount_from_stake(effective_stake: u128) -> u64 {
         effective_stake
-            .checked_div(u128::from(weight))
+            .checked_div(u128::from(SCALE_FACTOR_BASE))
             .unwrap()
             .try_into()
             .unwrap()

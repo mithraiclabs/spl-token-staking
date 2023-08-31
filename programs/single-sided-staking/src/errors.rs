@@ -22,4 +22,10 @@ pub enum ErrorCode {
   InvalidStakeMint, // 6008
   #[msg("Stake is still locked")]
   StakeStillLocked, // 6009
+  #[msg("Max duration must be great than min")]
+  InvalidStakePoolDuration, // 6010
+  #[msg("Max weight must be great than min")]
+  InvalidStakePoolWeight, // 6011
+  #[msg("Duration too short")]
+  DurationTooShort, // 6012
 }

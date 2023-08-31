@@ -101,19 +101,22 @@ pub fn handler<'info>(
     lockup_duration: u64,
 ) -> Result<()> {
     ctx.accounts.transfer_from_user_to_stake_vault(amount)?;
-    let effect_amount_staked =
-        StakeDepositReceipt::get_effective_stake_amount(amount, lockup_duration);
 
     {
         let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
+        if lockup_duration < stake_pool.min_duration {
+            return Err(ErrorCode::DurationTooShort.into());
+        }
         let stake_deposit_receipt = &mut ctx.accounts.stake_deposit_receipt;
 
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 1usize)?;
+        let weight = stake_pool.get_stake_weight(lockup_duration);
+        let effect_amount_staked = StakeDepositReceipt::get_effective_stake_amount(weight, amount);
+        msg!("effective amount staked {}", effect_amount_staked);
 
         stake_deposit_receipt.stake_pool = ctx.accounts.stake_pool.key();
         stake_deposit_receipt.owner = ctx.accounts.owner.key();
         stake_deposit_receipt.deposit_amount = amount;
-        // TODO scale based on lockup duration
         stake_deposit_receipt.effective_stake = effect_amount_staked;
         stake_deposit_receipt.lockup_duration = lockup_duration;
         stake_deposit_receipt.deposit_timestamp = Clock::get()?.unix_timestamp;
@@ -127,8 +130,10 @@ pub fn handler<'info>(
             .unwrap();
     }
 
-    let effect_amount_staked_tokens =
-        StakeDepositReceipt::get_token_amount_from_stake(effect_amount_staked, lockup_duration);
-    ctx.accounts.mint_staked_token_to_user(effect_amount_staked_tokens)?;
+    let effect_amount_staked_tokens = StakeDepositReceipt::get_token_amount_from_stake(
+        ctx.accounts.stake_deposit_receipt.effective_stake,
+    );
+    ctx.accounts
+        .mint_staked_token_to_user(effect_amount_staked_tokens)?;
     Ok(())
 }

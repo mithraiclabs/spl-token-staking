@@ -16,8 +16,20 @@ pub mod single_sided_staking {
         ctx: Context<InitializeStakePool>,
         nonce: u8,
         digit_shift: i8,
+        base_weight: u64,
+        max_weight: u64,
+        min_duration: u64,
+        max_duration: u64,
     ) -> Result<()> {
-        initialize_stake_pool::handler(ctx, nonce, digit_shift)
+        initialize_stake_pool::handler(
+            ctx,
+            nonce,
+            digit_shift,
+            base_weight,
+            max_weight,
+            min_duration,
+            max_duration,
+        )
     }
 
     pub fn add_reward_pool(ctx: Context<AddRewardPool>, index: u8) -> Result<()> {

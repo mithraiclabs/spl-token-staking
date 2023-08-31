@@ -61,12 +61,26 @@ describe("deposit", () => {
   );
   const deposit1Amount = new anchor.BN(5_000_000_000);
   const deposit2Amount = new anchor.BN(1_000_000_000);
+  const baseWeight = new anchor.BN(SCALE_FACTOR_BASE);
+  const maxWeight = new anchor.BN(4 * SCALE_FACTOR_BASE);
+  const minDuration = new anchor.BN(1000);
+  const maxDuration = new anchor.BN(4 * 31536000);
+  const durationDiff = maxDuration.sub(minDuration);
 
   before(async () => {
     // set up depositor account and stake pool account
     await Promise.all([
       createDepositorSplAccounts(program, depositor, stakePoolNonce),
-      initStakePool(program, mintToBeStaked, stakePoolNonce),
+      initStakePool(
+        program,
+        mintToBeStaked,
+        stakePoolNonce,
+        0,
+        baseWeight,
+        maxWeight,
+        minDuration,
+        maxDuration
+      ),
     ]);
     // add reward pool to the initialized stake pool
     await Promise.all([addRewardPool(program, stakePoolNonce, rewardMint1)]);
@@ -74,7 +88,6 @@ describe("deposit", () => {
 
   it("First Deposit (5) successful", async () => {
     const receiptNonce = 0;
-    const duration = new anchor.BN(1000);
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor.publicKey.toBuffer(),
@@ -88,7 +101,7 @@ describe("deposit", () => {
       await tokenProgram.account.account.fetch(mintToBeStakedAccount);
 
     await program.methods
-      .deposit(receiptNonce, deposit1Amount, duration)
+      .deposit(receiptNonce, deposit1Amount, minDuration)
       .accounts({
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
@@ -136,7 +149,10 @@ describe("deposit", () => {
       stakeReceipt.effectiveStake.toString(),
       deposit1Amount.mul(scaleFactorBN).toString()
     );
-    assert.equal(stakeReceipt.lockupDuration.toString(), duration.toString());
+    assert.equal(
+      stakeReceipt.lockupDuration.toString(),
+      minDuration.toString()
+    );
 
     assert.equal(
       stakePool.totalWeightedStake.toString(),
@@ -146,7 +162,6 @@ describe("deposit", () => {
 
   it("Second Deposit (1) recalculates effective reward per stake", async () => {
     const receiptNonce = 1;
-    const duration = new anchor.BN(1000);
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor.publicKey.toBuffer(),
@@ -167,7 +182,7 @@ describe("deposit", () => {
     );
 
     await program.methods
-      .deposit(receiptNonce, deposit2Amount, duration)
+      .deposit(receiptNonce, deposit2Amount, minDuration)
       .accounts({
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
@@ -228,13 +243,119 @@ describe("deposit", () => {
       stakeReceipt.effectiveStake.toString(),
       deposit2Amount.mul(scaleFactorBN).toString()
     );
-    assert.equal(stakeReceipt.lockupDuration.toString(), duration.toString());
+    assert.equal(
+      stakeReceipt.lockupDuration.toString(),
+      minDuration.toString()
+    );
 
     assert.equal(
       stakePool.totalWeightedStake.toString(),
       deposit1Amount
         .mul(scaleFactorBN)
         .add(deposit2Amount.mul(scaleFactorBN))
+        .toString()
+    );
+  });
+
+  it("should scale weight based on lockup duration", async () => {
+    const receiptNonce1 = 2;
+    const receiptNonce2 = 3;
+    const getStakeReceiptKey = (nonce: number) =>
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          depositor.publicKey.toBuffer(),
+          stakePoolKey.toBuffer(),
+          new anchor.BN(nonce).toArrayLike(Buffer, "le", 4),
+          Buffer.from("stakeDepositReceipt", "utf-8"),
+        ],
+        program.programId
+      );
+    const [stakeReceiptKey1] = getStakeReceiptKey(receiptNonce1);
+    const [stakeReceiptKey2] = getStakeReceiptKey(receiptNonce2);
+    const stakeMintAccountBefore1 = await tokenProgram.account.account.fetch(
+      stakeMintAccountKey
+    );
+    await program.methods
+      .deposit(receiptNonce1, deposit2Amount, maxDuration)
+      .accounts({
+        owner: depositor.publicKey,
+        from: mintToBeStakedAccount,
+        stakePool: stakePoolKey,
+        vault: vaultKey,
+        stakeMint,
+        destination: stakeMintAccountKey,
+        stakeDepositReceipt: stakeReceiptKey1,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .remainingAccounts([
+        {
+          pubkey: rewardVaultKey,
+          isWritable: false,
+          isSigner: false,
+        },
+      ])
+      .signers([depositor])
+      .rpc({ skipPreflight: true });
+    const [stakeReceipt1, stakeMintAccountAfter1] = await Promise.all([
+      program.account.stakeDepositReceipt.fetch(stakeReceiptKey1),
+      tokenProgram.account.account.fetch(stakeMintAccountKey),
+    ]);
+    assert.equal(
+      stakeReceipt1.effectiveStake.toString(),
+      stakeReceipt1.depositAmount.mul(maxWeight).toString()
+    );
+    assert.equal(
+      stakeMintAccountAfter1.amount.toString(),
+      // should be 4x the deposit amount
+      stakeMintAccountBefore1.amount
+        .add(deposit2Amount.mul(maxWeight).div(scaleFactorBN))
+        .toString()
+    );
+
+    await program.methods
+      .deposit(receiptNonce2, deposit2Amount, maxDuration.div(new anchor.BN(2)))
+      .accounts({
+        owner: depositor.publicKey,
+        from: mintToBeStakedAccount,
+        stakePool: stakePoolKey,
+        vault: vaultKey,
+        stakeMint,
+        destination: stakeMintAccountKey,
+        stakeDepositReceipt: stakeReceiptKey2,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .remainingAccounts([
+        {
+          pubkey: rewardVaultKey,
+          isWritable: false,
+          isSigner: false,
+        },
+      ])
+      .signers([depositor])
+      .rpc({ skipPreflight: true });
+    const [stakeReceipt2, stakeMintAccountAfter2] = await Promise.all([
+      program.account.stakeDepositReceipt.fetch(stakeReceiptKey2),
+      tokenProgram.account.account.fetch(stakeMintAccountKey),
+    ]);
+    const receipt2WeightRatio = maxDuration
+      .div(new anchor.BN(2))
+      .sub(minDuration)
+      .mul(scaleFactorBN)
+      .div(durationDiff);
+    const weight = maxWeight.mul(receipt2WeightRatio).div(scaleFactorBN);
+    assert.equal(
+      stakeReceipt2.effectiveStake.toString(),
+      stakeReceipt2.depositAmount.mul(weight).toString()
+    );
+    assert.equal(
+      stakeMintAccountAfter2.amount.toString(),
+      // should be just under 2x the deposit amount
+      stakeMintAccountAfter1.amount
+        .add(deposit2Amount.mul(weight).div(scaleFactorBN))
         .toString()
     );
   });

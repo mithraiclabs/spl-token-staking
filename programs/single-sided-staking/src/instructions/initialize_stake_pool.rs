@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-use crate::state::StakePool;
+use crate::{errors::ErrorCode, state::StakePool};
 
 #[derive(Accounts)]
 #[instruction(nonce: u8, digit_shift: i8)]
@@ -53,12 +53,30 @@ pub struct InitializeStakePool<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializeStakePool>, nonce: u8, digit_shift: i8) -> Result<()> {
+pub fn handler(
+    ctx: Context<InitializeStakePool>,
+    nonce: u8,
+    digit_shift: i8,
+    base_weight: u64,
+    max_weight: u64,
+    min_duration: u64,
+    max_duration: u64,
+) -> Result<()> {
+    if min_duration > max_duration {
+        return Err(ErrorCode::InvalidStakePoolDuration.into());
+    }
+    if base_weight > max_weight {
+      return Err(ErrorCode::InvalidStakePoolWeight.into());
+  }
     let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
     stake_pool.authority = ctx.accounts.authority.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
     stake_pool.digit_shift = digit_shift;
+    stake_pool.base_weight = base_weight;
+    stake_pool.max_weight = max_weight;
+    stake_pool.min_duration = min_duration;
+    stake_pool.max_duration = max_duration;
     stake_pool.nonce = nonce;
     stake_pool.bump_seed = *ctx.bumps.get("stake_pool").unwrap();
     Ok(())
