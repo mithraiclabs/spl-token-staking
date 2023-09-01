@@ -13,6 +13,7 @@ Caveats:
 
 - since we must atomically iterate over RewardPools at deposit time, there is an upper limit to the number of RewardPools that can be on a StakePool
 - Un-staking is all or none
+- Precision loss: based on the `max_weight` or largest scalar of the deposited amount, we must truncate some precision in order to fit it into a `u64` for the SPL Token representation of effective stake weight. To do this, we calculate the minimum number of digits that must be truncated to fit into the `u64::MAX` based on the given `max_weight`.
 
 ### State
 
