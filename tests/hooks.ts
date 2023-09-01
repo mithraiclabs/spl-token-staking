@@ -10,10 +10,10 @@ import {
 } from "@solana/spl-token";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
-const stakeMintKeypair = anchor.web3.Keypair.generate();
+const mintToBeStakedKeypair = anchor.web3.Keypair.generate();
 const rewardMint1Keypair = anchor.web3.Keypair.generate();
 const rewardMint2Keypair = anchor.web3.Keypair.generate();
-export const mintToBeStaked = stakeMintKeypair.publicKey;
+export const mintToBeStaked = mintToBeStakedKeypair.publicKey;
 export const rewardMint1 = rewardMint1Keypair.publicKey;
 export const rewardMint2 = rewardMint2Keypair.publicKey;
 
@@ -129,7 +129,7 @@ export const mochaHooks = {
         )
       );
       await program.provider.sendAndConfirm(tx, [
-        stakeMintKeypair,
+        mintToBeStakedKeypair,
         rewardMint1Keypair,
         rewardMint2Keypair,
       ]);
@@ -160,7 +160,9 @@ export const airdropSol = async (
 export const createDepositorSplAccounts = async (
   program: anchor.Program<SplTokenStaking>,
   depositor: anchor.web3.Keypair,
-  stakePoolNonce: number
+  stakePoolNonce: number,
+  mintStake = mintToBeStaked,
+  mintToBeStakedAmount: number | bigint = 10_000_000_000
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -181,7 +183,7 @@ export const createDepositorSplAccounts = async (
     TOKEN_PROGRAM_ID
   );
   const mintToBeStakedAccount = getAssociatedTokenAddressSync(
-    mintToBeStaked,
+    mintStake,
     depositor.publicKey,
     false,
     TOKEN_PROGRAM_ID
@@ -190,15 +192,15 @@ export const createDepositorSplAccounts = async (
     program.provider.publicKey,
     mintToBeStakedAccount,
     depositor.publicKey,
-    mintToBeStaked,
+    mintStake,
     TOKEN_PROGRAM_ID
   );
   // mint 10 stakeMint to provider wallet
   const mintIx = createMintToInstruction(
-    mintToBeStaked,
+    mintStake,
     mintToBeStakedAccount,
     program.provider.publicKey,
-    10_000_000_000,
+    mintToBeStakedAmount,
     undefined,
     TOKEN_PROGRAM_ID
   );

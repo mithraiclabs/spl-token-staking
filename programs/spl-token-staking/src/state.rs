@@ -10,6 +10,24 @@ pub const MAX_REWARD_POOLS: usize = 5;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 
+/// Get the number of digits to shift (aka precision loss) due to potential
+/// overflow of all tokens being staked for the max stake weight.
+pub fn get_digit_shift_by_max_scalar(max_weight: u64) -> u8 {
+    let mut digit_shift = 0u32;
+    while u128::from(max_weight)
+        .checked_mul(u128::from(u64::MAX))
+        .unwrap()
+        .checked_div(u128::from(SCALE_FACTOR_BASE))
+        .unwrap()
+        .checked_div(u128::pow(10, digit_shift))
+        .unwrap()
+        .gt(&u128::from(u64::MAX))
+    {
+        digit_shift += 1;
+    }
+    digit_shift.try_into().unwrap()
+}
+
 #[assert_size(64)]
 #[derive(Clone, Copy, Default, AnchorDeserialize, AnchorSerialize, Pod, Zeroable)]
 #[repr(C)]
@@ -61,15 +79,11 @@ pub struct StakePool {
     pub min_duration: u64,
     /** Maximum duration for lockup. At this point, the staker would receive the max weight. */
     pub max_duration: u64,
-    /** Since the amount of weighted stake can exceed a u64 if the max integer of
-    SPL Token amount were deposited and lockedup, we must account for overflow by
-    losing some precision. The StakePool authority can set this precision */
-    pub digit_shift: i8,
     /** Nonce to derive multiple stake pools from same mint */
     pub nonce: u8,
     /** Bump seed for stake_mint */
     pub bump_seed: u8,
-    _padding0: [u8; 13],
+    _padding0: [u8; 14],
 }
 
 impl StakePool {
@@ -195,9 +209,12 @@ impl StakeDepositReceipt {
     }
 
     /// Effective stake converted to u64 token amount
-    pub fn get_token_amount_from_stake(effective_stake: u128) -> u64 {
+    pub fn get_token_amount_from_stake(effective_stake: u128, max_weight: u64) -> u64 {
+        let digit_shift = get_digit_shift_by_max_scalar(max_weight);
         effective_stake
             .checked_div(u128::from(SCALE_FACTOR_BASE))
+            .unwrap()
+            .checked_div(u128::from(10u8.pow(digit_shift.into())))
             .unwrap()
             .try_into()
             .unwrap()

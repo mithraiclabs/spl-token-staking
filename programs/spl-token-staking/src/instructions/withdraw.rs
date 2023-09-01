@@ -71,6 +71,7 @@ impl<'info> Withdraw<'info> {
     }
 
     pub fn burn_stake_weight_tokens_from_owner(&self) -> Result<()> {
+        let stake_pool = self.stake_pool.load()?;
         let cpi_accounts = Burn {
             mint: self.stake_mint.to_account_info(),
             from: self.from.to_account_info(),
@@ -79,6 +80,7 @@ impl<'info> Withdraw<'info> {
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         let effective_stake_token_amount = StakeDepositReceipt::get_token_amount_from_stake(
             self.stake_deposit_receipt.effective_stake,
+            stake_pool.max_weight
         );
         token::burn(cpi_ctx, effective_stake_token_amount)
     }

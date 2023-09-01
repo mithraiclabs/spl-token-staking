@@ -112,7 +112,6 @@ pub fn handler<'info>(
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 1usize)?;
         let weight = stake_pool.get_stake_weight(lockup_duration);
         let effect_amount_staked = StakeDepositReceipt::get_effective_stake_amount(weight, amount);
-        msg!("effective amount staked {}", effect_amount_staked);
 
         stake_deposit_receipt.stake_pool = ctx.accounts.stake_pool.key();
         stake_deposit_receipt.owner = ctx.accounts.owner.key();
@@ -129,9 +128,10 @@ pub fn handler<'info>(
             .checked_add(effect_amount_staked)
             .unwrap();
     }
-
+    let stake_pool = ctx.accounts.stake_pool.load()?;
     let effect_amount_staked_tokens = StakeDepositReceipt::get_token_amount_from_stake(
         ctx.accounts.stake_deposit_receipt.effective_stake,
+        stake_pool.max_weight,
     );
     ctx.accounts
         .mint_staked_token_to_user(effect_amount_staked_tokens)?;

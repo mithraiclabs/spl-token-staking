@@ -37,10 +37,6 @@ last_amount: u64
 ```rust
 /** Pubkey that can make updates to StakePool */
 authority: Pubkey,
-/** Since the amount of weighted stake can exceed a u64 if the max integer of
-SPL Token amount were deposited and lockedup, we must account for overflow by
-losing some precision. The StakePool authority can set this precision */
-digit_shift: i8,
 /** Total amount staked that accounts for the lock up period weighting.
 Note, this is not equal to the amount of SPL Tokens staked. */
 total_weighted_stake: u128,

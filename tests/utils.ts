@@ -4,6 +4,7 @@ import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
 export const SCALE_FACTOR_BASE = 1_000_000_000;
+export const U64_MAX = BigInt("18446744073709551615");
 
 export const getMaxNumberOfRewardPools = () =>
   (
@@ -17,7 +18,6 @@ export const initStakePool = async (
   program: anchor.Program<SplTokenStaking>,
   mint: anchor.web3.PublicKey,
   nonce = 0,
-  digitShift = 0,
   baseWeight = new anchor.BN(SCALE_FACTOR_BASE),
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE),
   minDuration = new anchor.BN(0),
@@ -40,14 +40,7 @@ export const initStakePool = async (
     program.programId
   );
   await program.methods
-    .initializeStakePool(
-      nonce,
-      digitShift,
-      baseWeight,
-      maxWeight,
-      minDuration,
-      maxDuration
-    )
+    .initializeStakePool(nonce, baseWeight, maxWeight, minDuration, maxDuration)
     .accounts({
       authority: program.provider.publicKey,
       stakePool: stakePoolKey,
@@ -157,4 +150,17 @@ export const deposit = async (
     )
     .signers([depositor])
     .rpc({ skipPreflight: true });
+};
+
+export const getDigitShift = (maxWeight: bigint) => {
+  let digitShift = 0;
+  while (
+    (maxWeight * U64_MAX) /
+      BigInt(SCALE_FACTOR_BASE) /
+      BigInt(10 ** digitShift) >
+    U64_MAX
+  ) {
+    digitShift += 1;
+  }
+  return digitShift;
 };

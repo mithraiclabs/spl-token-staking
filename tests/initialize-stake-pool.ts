@@ -28,7 +28,6 @@ describe("initialize-stake-pool", () => {
   );
 
   it("StakePool initialized", async () => {
-    const digitShift = -1;
     const minDuration = new anchor.BN(0);
     const maxDuration = new anchor.BN(31536000); // 1 year in seconds
     const baseWeight = new anchor.BN(1 * SCALE_FACTOR_BASE);
@@ -36,7 +35,6 @@ describe("initialize-stake-pool", () => {
     await program.methods
       .initializeStakePool(
         nonce,
-        digitShift,
         baseWeight,
         maxWeight,
         minDuration,
@@ -64,7 +62,6 @@ describe("initialize-stake-pool", () => {
     assert.isTrue(stakePool.stakeMint.equals(stakeMintKey));
     assert.isTrue(stakePool.vault.equals(vaultKey));
     assert.isTrue(stakePool.totalWeightedStake.eq(new anchor.BN(0)));
-    assert.equal(stakePool.digitShift, digitShift);
     assert.equal(stakePool.baseWeight.toString(), baseWeight.toString());
     assert.equal(stakePool.maxWeight.toString(), maxWeight.toString());
     assert.equal(stakePool.minDuration.toString(), minDuration.toString());

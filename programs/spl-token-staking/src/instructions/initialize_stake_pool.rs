@@ -1,10 +1,19 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-use crate::{errors::ErrorCode, state::StakePool};
+use crate::{
+    errors::ErrorCode,
+    state::{get_digit_shift_by_max_scalar, StakePool},
+};
 
 #[derive(Accounts)]
-#[instruction(nonce: u8, digit_shift: i8)]
+#[instruction(
+  nonce: u8,
+  base_weight: u64,
+  max_weight: u64,
+  min_duration: u64,
+  max_duration: u64,
+)]
 pub struct InitializeStakePool<'info> {
     /// Payer and authority of the StakePool
     #[account(mut)]
@@ -32,7 +41,7 @@ pub struct InitializeStakePool<'info> {
       seeds = [&stake_pool.key().to_bytes()[..], b"stakeMint"],
       bump,
       payer = authority,
-      mint::decimals = mint.decimals,
+      mint::decimals = u8::max(mint.decimals - get_digit_shift_by_max_scalar(max_weight), 0),
       mint::authority = stake_pool,
     )]
     pub stake_mint: Account<'info, Mint>,
@@ -56,7 +65,6 @@ pub struct InitializeStakePool<'info> {
 pub fn handler(
     ctx: Context<InitializeStakePool>,
     nonce: u8,
-    digit_shift: i8,
     base_weight: u64,
     max_weight: u64,
     min_duration: u64,
@@ -66,13 +74,12 @@ pub fn handler(
         return Err(ErrorCode::InvalidStakePoolDuration.into());
     }
     if base_weight > max_weight {
-      return Err(ErrorCode::InvalidStakePoolWeight.into());
-  }
+        return Err(ErrorCode::InvalidStakePoolWeight.into());
+    }
     let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
     stake_pool.authority = ctx.accounts.authority.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
-    stake_pool.digit_shift = digit_shift;
     stake_pool.base_weight = base_weight;
     stake_pool.max_weight = max_weight;
     stake_pool.min_duration = min_duration;

@@ -15,7 +15,6 @@ pub mod spl_token_staking {
     pub fn initialize_stake_pool(
         ctx: Context<InitializeStakePool>,
         nonce: u8,
-        digit_shift: i8,
         base_weight: u64,
         max_weight: u64,
         min_duration: u64,
@@ -24,7 +23,6 @@ pub mod spl_token_staking {
         initialize_stake_pool::handler(
             ctx,
             nonce,
-            digit_shift,
             base_weight,
             max_weight,
             min_duration,

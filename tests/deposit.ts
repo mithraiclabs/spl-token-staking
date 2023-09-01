@@ -12,7 +12,12 @@ import {
   TOKEN_PROGRAM_ID,
   createTransferInstruction,
 } from "@solana/spl-token";
-import { SCALE_FACTOR_BASE, addRewardPool, initStakePool } from "./utils";
+import {
+  SCALE_FACTOR_BASE,
+  addRewardPool,
+  getDigitShift,
+  initStakePool,
+} from "./utils";
 
 const scaleFactorBN = new anchor.BN(SCALE_FACTOR_BASE);
 
@@ -66,6 +71,7 @@ describe("deposit", () => {
   const minDuration = new anchor.BN(1000);
   const maxDuration = new anchor.BN(4 * 31536000);
   const durationDiff = maxDuration.sub(minDuration);
+  const digitShift = getDigitShift(BigInt(maxWeight.toString()));
 
   before(async () => {
     // set up depositor account and stake pool account
@@ -75,7 +81,6 @@ describe("deposit", () => {
         program,
         mintToBeStaked,
         stakePoolNonce,
-        0,
         baseWeight,
         maxWeight,
         minDuration,
@@ -133,7 +138,10 @@ describe("deposit", () => {
       mintToBeStakedAccountBefore.amount.sub(deposit1Amount).toString(),
       mintToBeStakedAccountAfter.amount.toString()
     );
-    assert.equal(stakeMintAccount.amount.toString(), deposit1Amount.toString());
+    assert.equal(
+      stakeMintAccount.amount.toString(),
+      deposit1Amount.div(new anchor.BN(10 ** digitShift)).toString()
+    );
     assert.equal(vault.amount.toString(), deposit1Amount.toString());
     assert.equal(stakeReceipt.stakePool.toString(), stakePoolKey.toString());
     assert.equal(
@@ -218,7 +226,10 @@ describe("deposit", () => {
     );
     assert.equal(
       stakeMintAccount.amount.toString(),
-      deposit1Amount.add(deposit2Amount).toString()
+      deposit1Amount
+        .add(deposit2Amount)
+        .div(new anchor.BN(10 ** digitShift))
+        .toString()
     );
     assert.equal(stakeReceipt.stakePool.toString(), stakePoolKey.toString());
     assert.equal(
@@ -310,7 +321,12 @@ describe("deposit", () => {
       stakeMintAccountAfter1.amount.toString(),
       // should be 4x the deposit amount
       stakeMintAccountBefore1.amount
-        .add(deposit2Amount.mul(maxWeight).div(scaleFactorBN))
+        .add(
+          deposit2Amount
+            .mul(maxWeight)
+            .div(scaleFactorBN)
+            .div(new anchor.BN(10 ** digitShift))
+        )
         .toString()
     );
 
@@ -355,7 +371,12 @@ describe("deposit", () => {
       stakeMintAccountAfter2.amount.toString(),
       // should be just under 2x the deposit amount
       stakeMintAccountAfter1.amount
-        .add(deposit2Amount.mul(weight).div(scaleFactorBN))
+        .add(
+          deposit2Amount
+            .mul(weight)
+            .div(scaleFactorBN)
+            .div(new anchor.BN(10 ** digitShift))
+        )
         .toString()
     );
   });
