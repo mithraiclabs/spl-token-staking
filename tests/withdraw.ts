@@ -103,14 +103,16 @@ describe("withdraw", () => {
     await program.methods
       .withdraw()
       .accounts({
-        owner: depositor1.publicKey,
+        claimBase: {
+          owner: depositor1.publicKey,
+          stakePool: stakePoolKey,
+          stakeDepositReceipt: stakeReceiptKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        },
         vault: vaultKey,
         stakeMint,
-        stakePool: stakePoolKey,
-        stakeDepositReceipt: stakeReceiptKey,
         from: stakeMintAccountKey,
         destination: mintToBeStakedAccountKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         {
@@ -211,14 +213,16 @@ describe("withdraw", () => {
     await program.methods
       .withdraw()
       .accounts({
-        owner: depositor1.publicKey,
+        claimBase: {
+          owner: depositor1.publicKey,
+          stakePool: stakePoolKey,
+          stakeDepositReceipt: stakeReceiptKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        },
         vault: vaultKey,
         stakeMint,
-        stakePool: stakePoolKey,
-        stakeDepositReceipt: stakeReceiptKey,
         from: stakeMintAccountKey,
         destination: mintToBeStakedAccountKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .remainingAccounts([
         {
@@ -298,14 +302,16 @@ describe("withdraw", () => {
       await program.methods
         .withdraw()
         .accounts({
-          owner: depositor1.publicKey,
+          claimBase: {
+            owner: depositor1.publicKey,
+            stakePool: stakePoolKey,
+            stakeDepositReceipt: stakeReceiptKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          },
           vault: vaultKey,
           stakeMint,
-          stakePool: stakePoolKey,
-          stakeDepositReceipt: stakeReceiptKey,
           from: stakeMintAccountKey,
           destination: mintToBeStakedAccountKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .remainingAccounts([
           {

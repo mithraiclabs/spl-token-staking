@@ -117,9 +117,11 @@ describe("claim-all", () => {
     await program.methods
       .claimAll()
       .accounts({
-        owner: depositor1.publicKey,
-        stakePool: stakePoolKey,
-        stakeDepositReceipt: stakeReceiptKey,
+        claimBase: {
+          owner: depositor1.publicKey,
+          stakePool: stakePoolKey,
+          stakeDepositReceipt: stakeReceiptKey,
+        },
       })
       .signers([depositor1])
       .remainingAccounts([
@@ -216,9 +218,11 @@ describe("claim-all", () => {
       program.methods
         .claimAll()
         .accounts({
-          owner: depositor1.publicKey,
-          stakePool: stakePoolKey,
-          stakeDepositReceipt: stake1ReceiptKey,
+          claimBase: {
+            owner: depositor1.publicKey,
+            stakePool: stakePoolKey,
+            stakeDepositReceipt: stake1ReceiptKey,
+          },
         })
         .signers([depositor1])
         .remainingAccounts([
@@ -237,9 +241,11 @@ describe("claim-all", () => {
       program.methods
         .claimAll()
         .accounts({
-          owner: depositor2.publicKey,
-          stakePool: stakePoolKey,
-          stakeDepositReceipt: stake2ReceiptKey,
+          claimBase: {
+            owner: depositor2.publicKey,
+            stakePool: stakePoolKey,
+            stakeDepositReceipt: stake2ReceiptKey,
+          },
         })
         .signers([depositor2])
         .remainingAccounts([
@@ -299,9 +305,11 @@ describe("claim-all", () => {
     await program.methods
       .claimAll()
       .accounts({
-        owner: depositor1.publicKey,
-        stakePool: stakePoolKey,
-        stakeDepositReceipt: stake1ReceiptKey,
+        claimBase: {
+          owner: depositor1.publicKey,
+          stakePool: stakePoolKey,
+          stakeDepositReceipt: stake1ReceiptKey,
+        },
       })
       .signers([depositor1])
       .remainingAccounts([
@@ -395,9 +403,11 @@ describe("claim-all", () => {
     await program.methods
       .claimAll()
       .accounts({
-        owner: depositor1.publicKey,
-        stakePool: stakePoolKey,
-        stakeDepositReceipt: stakeReceiptKey,
+        claimBase: {
+          owner: depositor1.publicKey,
+          stakePool: stakePoolKey,
+          stakeDepositReceipt: stakeReceiptKey,
+        },
       })
       .signers([depositor1])
       .remainingAccounts([
