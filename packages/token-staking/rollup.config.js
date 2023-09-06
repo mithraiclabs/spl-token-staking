@@ -1,16 +1,15 @@
-/* eslint-disable global-require */
-import typescript from "rollup-plugin-typescript2";
-import pkg from "./package.json";
+const typescript = require("rollup-plugin-typescript2");
+const pkg = require("./package.json");
 
-export default {
+module.exports = {
   input: "src/index.ts",
   output: [
     {
-      file: 'dist/index.js',
+      file: "dist/index.js",
       format: "cjs",
     },
     {
-      file: 'dist/index.es.js',
+      file: "dist/index.es.js",
       format: "es",
     },
   ],
