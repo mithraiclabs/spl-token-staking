@@ -1,0 +1,5 @@
+export const SCALE_FACTOR_BASE = 1_000_000_000n;
+export const U64_MAX = 18446744073709551615n;
+
+export const SPL_TOKEN_STAKING_DEVNET_ID =
+  "H1vqoH6vhwQ4WmFYa4rWC6rnVGNwPJMdiWNNqZDQBcNc";

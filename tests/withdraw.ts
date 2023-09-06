@@ -5,7 +5,6 @@ import {
   createDepositorSplAccounts,
   mintToBeStaked,
   rewardMint1,
-  rewardMint2,
 } from "./hooks";
 import {
   TOKEN_PROGRAM_ID,
@@ -14,7 +13,7 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, deposit, initStakePool } from "./utils";
+import { addRewardPool, deposit, initStakePool } from "@mithraic-labs/token-staking";
 
 describe("withdraw", () => {
   const program = anchor.workspace

@@ -9,9 +9,7 @@ import {
   MintLayout,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { SCALE_FACTOR_BASE, initStakePool } from "./utils";
-
-const u64Max = BigInt("18446744073709551615");
+import { SCALE_FACTOR_BASE, U64_MAX, initStakePool } from "@mithraic-labs/token-staking";
 
 describe("decimal-overflow", () => {
   const program = anchor.workspace
@@ -50,8 +48,8 @@ describe("decimal-overflow", () => {
     false,
     TOKEN_PROGRAM_ID
   );
-  const baseWeight = new anchor.BN(SCALE_FACTOR_BASE);
-  const maxWeight = new anchor.BN(4 * SCALE_FACTOR_BASE);
+  const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
+  const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
   const minDuration = new anchor.BN(1000);
   const maxDuration = new anchor.BN(4 * 31536000);
 
@@ -88,7 +86,7 @@ describe("decimal-overflow", () => {
         stakePoolNonce,
         mintToBeStaked,
         // max amount of u64
-        u64Max
+        U64_MAX
       ),
       initStakePool(
         program,
@@ -115,7 +113,7 @@ describe("decimal-overflow", () => {
     );
 
     await program.methods
-      .deposit(receiptNonce, new anchor.BN(u64Max.toString()), maxDuration)
+      .deposit(receiptNonce, new anchor.BN(U64_MAX.toString()), maxDuration)
       .accounts({
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
@@ -134,12 +132,12 @@ describe("decimal-overflow", () => {
       tokenProgram.account.account.fetch(vaultKey),
       tokenProgram.account.account.fetch(stakeMintAccountKey),
     ]);
-    assert.equal(vault.amount.toString(), u64Max.toString());
+    assert.equal(vault.amount.toString(), U64_MAX.toString());
     assert.equal(
       stakeMintAccount.amount.toString(),
       // we lose a digit of precision due to the max weight being greater than 1,
       // so we must divide by 10 after scaling.
-      ((u64Max * BigInt(4)) / BigInt(10)).toString()
+      ((U64_MAX * BigInt(4)) / BigInt(10)).toString()
     );
   });
 });

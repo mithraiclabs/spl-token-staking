@@ -3,7 +3,7 @@ import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { assert } from "chai";
 import { mintToBeStaked } from "./hooks";
-import { SCALE_FACTOR_BASE } from "./utils";
+import { SCALE_FACTOR_BASE } from "@mithraic-labs/token-staking";
 
 describe("initialize-stake-pool", () => {
   const program = anchor.workspace
@@ -30,8 +30,8 @@ describe("initialize-stake-pool", () => {
   it("StakePool initialized", async () => {
     const minDuration = new anchor.BN(0);
     const maxDuration = new anchor.BN(31536000); // 1 year in seconds
-    const baseWeight = new anchor.BN(1 * SCALE_FACTOR_BASE);
-    const maxWeight = new anchor.BN(4 * SCALE_FACTOR_BASE);
+    const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
+    const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
     await program.methods
       .initializeStakePool(
         nonce,
