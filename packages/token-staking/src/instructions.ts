@@ -1,25 +1,24 @@
 import * as anchor from "@coral-xyz/anchor";
-import IDL from "../target/idl/spl_token_staking.json";
-import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
+import { SCALE_FACTOR_BASE } from "./constants";
+import { SplTokenStaking } from "./idl";
 
-export const SCALE_FACTOR_BASE = 1_000_000_000;
-export const U64_MAX = BigInt("18446744073709551615");
-
-export const getMaxNumberOfRewardPools = () =>
-  (
-    IDL.accounts.find((acc) => acc.name === "StakePool").type.fields as {
-      name: string;
-      type: any;
-    }[]
-  ).find((_type) => _type.name === "rewardPools").type.array[1];
-
+/**
+ * Initialize the StakePool and set configuration parameters.
+ * @param program 
+ * @param mint 
+ * @param nonce 
+ * @param baseWeight 
+ * @param maxWeight 
+ * @param minDuration 
+ * @param maxDuration 
+ */
 export const initStakePool = async (
   program: anchor.Program<SplTokenStaking>,
-  mint: anchor.web3.PublicKey,
+  mint: anchor.Address,
   nonce = 0,
-  baseWeight = new anchor.BN(SCALE_FACTOR_BASE),
-  maxWeight = new anchor.BN(SCALE_FACTOR_BASE),
+  baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
+  maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
   minDuration = new anchor.BN(0),
   maxDuration = new anchor.BN("18446744073709551615")
 ) => {
@@ -54,6 +53,14 @@ export const initStakePool = async (
     .rpc();
 };
 
+/**
+ * Add a RewardPool to an existing StakePool.
+ * @param program 
+ * @param stakePoolNonce 
+ * @param rewardMint 
+ * @param rewardPoolIndex 
+ * @returns 
+ */
 export const addRewardPool = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
@@ -90,12 +97,24 @@ export const addRewardPool = async (
     .rpc();
 };
 
+/**
+ * Stake with an existing StakePool.
+ * @param program 
+ * @param stakePoolNonce 
+ * @param depositor 
+ * @param vaultMintAccount 
+ * @param stakeMintAccount 
+ * @param amount 
+ * @param duration 
+ * @param receiptNonce 
+ * @param rewardVaults 
+ */
 export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
   depositor: anchor.web3.Keypair,
-  vaultMintAccount: anchor.web3.PublicKey,
-  stakeMintAccount: anchor.web3.PublicKey,
+  vaultMintAccount: anchor.Address,
+  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -150,17 +169,4 @@ export const deposit = async (
     )
     .signers([depositor])
     .rpc({ skipPreflight: true });
-};
-
-export const getDigitShift = (maxWeight: bigint) => {
-  let digitShift = 0;
-  while (
-    (maxWeight * U64_MAX) /
-      BigInt(SCALE_FACTOR_BASE) /
-      BigInt(10 ** digitShift) >
-    U64_MAX
-  ) {
-    digitShift += 1;
-  }
-  return digitShift;
 };

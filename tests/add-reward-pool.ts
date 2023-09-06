@@ -1,10 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
 import { splTokenProgram } from "@coral-xyz/spl-token";
-import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { airdropSol, mintToBeStaked, rewardMint1, rewardMint2 } from "./hooks";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
-import { initStakePool } from "./utils";
+import { SplTokenStaking, initStakePool } from "@mithraic-labs/token-staking";
 
 describe("add-reward-pool", () => {
   const program = anchor.workspace

@@ -1,6 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
 import { splTokenProgram } from "@coral-xyz/spl-token";
-import { SplTokenStaking } from "../target/types/spl_token_staking";
 import {
   createDepositorSplAccounts,
   mintToBeStaked,
@@ -14,7 +13,12 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, deposit, initStakePool } from "./utils";
+import {
+  addRewardPool,
+  deposit,
+  initStakePool,
+  SplTokenStaking,
+} from "@mithraic-labs/token-staking";
 
 describe("claim-all", () => {
   const program = anchor.workspace
