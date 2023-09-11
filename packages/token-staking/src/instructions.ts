@@ -101,7 +101,6 @@ export const addRewardPool = async (
  * Stake with an existing StakePool.
  * @param program 
  * @param stakePoolNonce 
- * @param depositor 
  * @param vaultMintAccount 
  * @param stakeMintAccount 
  * @param amount 
@@ -112,7 +111,6 @@ export const addRewardPool = async (
 export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
-  depositor: anchor.web3.Keypair,
   vaultMintAccount: anchor.Address,
   stakeMintAccount: anchor.Address,
   amount: anchor.BN,
@@ -138,7 +136,7 @@ export const deposit = async (
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
-      depositor.publicKey.toBuffer(),
+      program.provider.publicKey.toBuffer(),
       stakePoolKey.toBuffer(),
       new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
       Buffer.from("stakeDepositReceipt", "utf-8"),
@@ -149,7 +147,7 @@ export const deposit = async (
   await program.methods
     .deposit(receiptNonce, amount, duration)
     .accounts({
-      owner: depositor.publicKey,
+      owner: program.provider.publicKey,
       from: vaultMintAccount,
       stakePool: stakePoolKey,
       vault: vaultKey,
@@ -167,6 +165,6 @@ export const deposit = async (
         isSigner: false,
       }))
     )
-    .signers([depositor])
+    .signers([])
     .rpc({ skipPreflight: true });
 };

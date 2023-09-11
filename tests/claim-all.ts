@@ -15,10 +15,10 @@ import {
 import { assert } from "chai";
 import {
   addRewardPool,
-  deposit,
   initStakePool,
   SplTokenStaking,
 } from "@mithraic-labs/token-staking";
+import { deposit } from "./utils";
 
 describe("claim-all", () => {
   const program = anchor.workspace
