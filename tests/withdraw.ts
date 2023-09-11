@@ -13,7 +13,8 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, deposit, initStakePool } from "@mithraic-labs/token-staking";
+import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
+import { deposit } from "./utils";
 
 describe("withdraw", () => {
   const program = anchor.workspace
