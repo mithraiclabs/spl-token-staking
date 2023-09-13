@@ -3,9 +3,20 @@ use anchor_spl::token::TokenAccount;
 use bytemuck::{Pod, Zeroable};
 use jet_proc_macros::assert_size;
 
-use crate::errors::ErrorCode;
+use crate::{errors::ErrorCode, math::U192};
 
-/** Maximum number of RewardPools on a StakePool. */
+// REVIEW: What's the theoretical limit of Reward pools? What's the limiting factor (e.g. CU)?
+//  Wondering because a single StakePool could only ever provide 5 different assets as rewards.
+//  And spinning up a new StakePool, migrating stake, and changing governance (if integrated)
+//  should be considered not feasible.
+
+/**
+ * Maximum number of RewardPools on a StakePool.
+ *
+ * Withdraw requires 8 + 2 x num_reward_pools accounts and no arguments.
+ *  (256 accounts per LUT - 8) / 2 = 124 reward pool max from account limits
+ *
+*/
 pub const MAX_REWARD_POOLS: usize = 5;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
@@ -56,7 +67,7 @@ impl RewardPool {
     }
 }
 
-#[assert_size(480)]
+#[assert_size(512)]
 #[account(zero_copy)]
 #[repr(C)]
 pub struct StakePool {
@@ -67,13 +78,21 @@ pub struct StakePool {
     pub total_weighted_stake: u128,
     /** Token Account to store the staked SPL Token */
     pub vault: Pubkey,
+    /** Mint of the token being staked */
+    pub mint: Pubkey,
     /** Mint of the token representing effective stake */
     pub stake_mint: Pubkey,
     /** Array of RewardPools that apply to the stake pool */
     pub reward_pools: [RewardPool; MAX_REWARD_POOLS],
-    /** Base weight for staking lockup. In terms of 1 / SCALE_FACTOR_BASE */
+    /// The minimum weight received for staking. In terms of 1 / SCALE_FACTOR_BASE.
+    /// Examples:
+    /// * `min_weight = 1 x SCALE_FACTOR_BASE` = minmum of 1x multiplier for > min_duration staking
+    /// * `min_weight = 2 x SCALE_FACTOR_BASE` = minmum of 2x multiplier for > min_duration staking
     pub base_weight: u64,
-    /** Maximum weight for staking lockup (i.e. weight multiplier when locked up for max duration). In terms of 1 / SCALE_FACTOR_BASE */
+    /// Maximum weight for staking lockup (i.e. weight multiplier when locked
+    /// up for max duration). In terms of 1 / SCALE_FACTOR_BASE. Examples:
+    /// * A `max_weight = 1 x SCALE_FACTOR_BASE` = 1x multiplier for max staking duration
+    /// * A `max_weight = 2 x SCALE_FACTOR_BASE` = 2x multiplier for max staking duration
     pub max_weight: u64,
     /** Minimum duration for lockup. At this point, the staker would receive the base weight. */
     pub min_duration: u64,
@@ -98,9 +117,13 @@ impl StakePool {
     }
 
     /// Update amount of reward each effective stake should receive based on current deposits.
-    /// Iterate over reward pools:
+    /// Iterates over reward pools:
     ///   - check for changes in Token Account balance
     ///   - update `rewards_per_effective_stake` based on balance change
+    /// <br>
+    /// * `remaining_accounts` - The remaining_accounts passed into the instruction
+    /// * `reward_vault_account_offset` - The number of accounts to move the cursor/index each
+    /// iteration
     pub fn recalculate_rewards_per_effective_stake<'info>(
         &mut self,
         remaining_accounts: &[AccountInfo<'info>],
@@ -123,9 +146,10 @@ impl StakePool {
 
             // assert that the remaining account indexes and reward pool
             // indexes line up.
-            if reward_pool.reward_vault != account_info.key() {
-                return Err(ErrorCode::InvalidRewardPoolVaultIndex.into());
-            }
+            require!(
+                reward_pool.reward_vault == account_info.key(),
+                ErrorCode::InvalidRewardPoolVaultIndex
+            );
 
             let token_account: Account<'info, TokenAccount> =
                 Account::try_from(&account_info).map_err(|_| ErrorCode::InvalidRewardPoolVault)?;
@@ -142,6 +166,10 @@ impl StakePool {
                     .checked_sub(reward_pool.last_amount)
                     .unwrap(),
             );
+            // Scaled balance diff is scaled by SCALE_FACTOR_BASE squared because
+            //  total_weighted_stake is shifted by SCALE_FACTOR_BASE and this
+            //  avoids precision loss in the later division.
+            // Note: No possbilitiy of overflow because SCALE_FACTOR_BASE <= 10^10
             let scaled_balance_diff = balance_diff
                 .checked_mul(u128::from(SCALE_FACTOR_BASE))
                 .unwrap()
@@ -165,19 +193,18 @@ impl StakePool {
     pub fn get_stake_weight(&self, duration: u64) -> u64 {
         let duration_span = self.max_duration.checked_sub(self.min_duration).unwrap();
         let duration_exceeding_min = duration.checked_sub(self.min_duration).unwrap();
-        let scaled_duration_ratio = duration_exceeding_min
+        let calculated_weight = U192::from(duration_exceeding_min)
             // must scale to account for decimals
-            .checked_mul(SCALE_FACTOR_BASE)
+            .checked_mul(U192::from(SCALE_FACTOR_BASE))
             .unwrap()
-            .checked_div(duration_span)
-            .unwrap();
-        let calculated_weight = scaled_duration_ratio
-            .checked_mul(self.max_weight)
+            .checked_mul(U192::from(self.max_weight))
             .unwrap()
-            .checked_div(SCALE_FACTOR_BASE)
+            .checked_div(U192::from(duration_span))
+            .unwrap()
+            .checked_div(U192::from(SCALE_FACTOR_BASE))
             .unwrap();
 
-        u64::max(calculated_weight, self.base_weight)
+        u64::max(calculated_weight.as_u64(), self.base_weight)
     }
 }
 
@@ -214,7 +241,7 @@ impl StakeDepositReceipt {
         effective_stake
             .checked_div(u128::from(SCALE_FACTOR_BASE))
             .unwrap()
-            .checked_div(u128::from(10u8.pow(digit_shift.into())))
+            .checked_div(10u128.pow(digit_shift.into()))
             .unwrap()
             .try_into()
             .unwrap()

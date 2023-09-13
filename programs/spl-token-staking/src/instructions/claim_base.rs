@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, Transfer, self};
 
 use crate::errors::ErrorCode;
+use crate::math::U256;
+use crate::stake_pool_signer_seeds;
 use crate::state::{StakeDepositReceipt, StakePool, MAX_REWARD_POOLS, SCALE_FACTOR_BASE};
 
 #[derive(Accounts)]
@@ -39,16 +41,11 @@ impl<'info> ClaimBase<'info> {
           to: owner_reward_account_info,
           authority: self.stake_pool.to_account_info(),
       };
-      let stake_pool_signer_seeds: &[&[&[u8]]] = &[&[
-          &[stake_pool.nonce],
-          &stake_pool.authority.to_bytes(),
-          b"stakePool",
-          &[stake_pool.bump_seed],
-      ]];
+      let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
       let cpi_ctx = CpiContext::new_with_signer(
           self.token_program.to_account_info(),
           cpi_accounts,
-          stake_pool_signer_seeds,
+          signer_seeds,
       );
       token::transfer(cpi_ctx, amount)
   }
@@ -74,15 +71,14 @@ impl<'info> ClaimBase<'info> {
               .rewards_per_effective_stake
               .checked_sub(self.stake_deposit_receipt.claimed_amounts[index])
               .unwrap();
-          let total_claimable = claimable_per_effective_stake
-              .checked_mul(self.stake_deposit_receipt.effective_stake)
+          let total_claimable = U256::from(claimable_per_effective_stake)
+              .checked_mul(U256::from(self.stake_deposit_receipt.effective_stake))
               .unwrap()
-              .checked_div(u128::from(SCALE_FACTOR_BASE))
+              .checked_div(U256::from(SCALE_FACTOR_BASE))
               .unwrap()
-              .checked_div(u128::from(SCALE_FACTOR_BASE))
+              .checked_div(U256::from(SCALE_FACTOR_BASE))
               .unwrap()
-              .try_into()
-              .map_err(|_| ErrorCode::PrecisionMath)?;
+              .as_u64();
 
           if total_claimable == 0 {
               continue;

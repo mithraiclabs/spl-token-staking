@@ -13,7 +13,10 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
+import {
+  addRewardPool,
+  initStakePool,
+} from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
 
 describe("withdraw", () => {
@@ -26,6 +29,7 @@ describe("withdraw", () => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      mintToBeStaked.toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
@@ -68,7 +72,9 @@ describe("withdraw", () => {
       initStakePool(program, mintToBeStaked, stakePoolNonce),
     ]);
     // add reward pool to the initialized stake pool
-    await Promise.all([addRewardPool(program, stakePoolNonce, rewardMint1)]);
+    await Promise.all([
+      addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1),
+    ]);
   });
 
   it("withdraw unlocked tokens", async () => {
@@ -92,6 +98,7 @@ describe("withdraw", () => {
     await deposit(
       program,
       stakePoolNonce,
+      mintToBeStaked,
       depositor1,
       mintToBeStakedAccountKey,
       stakeMintAccountKey,
@@ -135,12 +142,14 @@ describe("withdraw", () => {
       sTokenAccountAfter,
       vaultAfter,
       stakeMintAfter,
+      stakeDepositReceipt,
     ] = await Promise.all([
       program.account.stakePool.fetch(stakePoolKey),
       tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
       tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
       tokenProgramInstance.account.account.fetch(vaultKey),
       tokenProgramInstance.account.mint.fetch(stakeMint),
+      program.provider.connection.getAccountInfo(stakeReceiptKey),
     ]);
     assert.equal(
       stakePoolBefore.totalWeightedStake.toString(),
@@ -156,6 +165,10 @@ describe("withdraw", () => {
     );
     assert.equal(vaultAfter.amount.toString(), "0");
     assert.equal(stakeMintAfter.supply.toString(), "0");
+    assert.isNull(
+      stakeDepositReceipt,
+      "StakeDepositReceipt account not closed"
+    );
   });
 
   it("withdraw claims unclaimed rewards", async () => {
@@ -180,6 +193,7 @@ describe("withdraw", () => {
     await deposit(
       program,
       stakePoolNonce,
+      mintToBeStaked,
       depositor1,
       mintToBeStakedAccountKey,
       stakeMintAccountKey,
@@ -290,6 +304,7 @@ describe("withdraw", () => {
     await deposit(
       program,
       stakePoolNonce,
+      mintToBeStaked,
       depositor1,
       mintToBeStakedAccountKey,
       stakeMintAccountKey,

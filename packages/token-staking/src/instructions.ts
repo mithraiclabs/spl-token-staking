@@ -5,13 +5,13 @@ import { SplTokenStaking } from "./idl";
 
 /**
  * Initialize the StakePool and set configuration parameters.
- * @param program 
- * @param mint 
- * @param nonce 
- * @param baseWeight 
- * @param maxWeight 
- * @param minDuration 
- * @param maxDuration 
+ * @param program
+ * @param mint
+ * @param nonce
+ * @param baseWeight
+ * @param maxWeight
+ * @param minDuration
+ * @param maxDuration
  */
 export const initStakePool = async (
   program: anchor.Program<SplTokenStaking>,
@@ -25,6 +25,7 @@ export const initStakePool = async (
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(nonce).toArrayLike(Buffer, "le", 1),
+      new anchor.web3.PublicKey(mint).toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
@@ -55,21 +56,24 @@ export const initStakePool = async (
 
 /**
  * Add a RewardPool to an existing StakePool.
- * @param program 
- * @param stakePoolNonce 
- * @param rewardMint 
- * @param rewardPoolIndex 
- * @returns 
+ * @param program
+ * @param stakePoolNonce
+ * @param stakePoolMint
+ * @param rewardMint
+ * @param rewardPoolIndex
+ * @returns
  */
 export const addRewardPool = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
+  stakePoolMint: anchor.Address,
   rewardMint: anchor.web3.PublicKey,
   rewardPoolIndex = 0
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
@@ -99,18 +103,20 @@ export const addRewardPool = async (
 
 /**
  * Stake with an existing StakePool.
- * @param program 
- * @param stakePoolNonce 
- * @param vaultMintAccount 
- * @param stakeMintAccount 
- * @param amount 
- * @param duration 
- * @param receiptNonce 
- * @param rewardVaults 
+ * @param program
+ * @param stakePoolNonce
+ * @param stakePoolMint
+ * @param vaultMintAccount
+ * @param stakeMintAccount
+ * @param amount
+ * @param duration
+ * @param receiptNonce
+ * @param rewardVaults
  */
 export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
+  stakePoolMint: anchor.Address,
   vaultMintAccount: anchor.Address,
   stakeMintAccount: anchor.Address,
   amount: anchor.BN,
@@ -121,6 +127,7 @@ export const deposit = async (
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],

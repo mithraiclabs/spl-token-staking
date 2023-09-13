@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, TokenAccount, Transfer};
 
-use crate::{errors::ErrorCode, state::StakeDepositReceipt};
+use crate::{errors::ErrorCode, state::StakeDepositReceipt, stake_pool_signer_seeds};
 
 use super::claim_base::*;
 
@@ -30,15 +30,18 @@ impl<'info> Withdraw<'info> {
     /// Addiditional validations that rely on the accounts within `claim_base`.
     pub fn validate_stake_pool_and_owner(&self) -> Result<()> {
         let stake_pool = self.claim_base.stake_pool.load()?;
-        if stake_pool.vault.key() != self.vault.key() {
-            return Err(ErrorCode::InvalidStakePoolVault.into());
-        }
-        if stake_pool.stake_mint.key() != self.stake_mint.key() {
-            return Err(ErrorCode::InvalidStakeMint.into());
-        }
-        if self.from.owner.key() != self.claim_base.owner.key() {
-            return Err(ErrorCode::InvalidAuthority.into());
-        }
+        require!(
+            stake_pool.vault.key() == self.vault.key(),
+            ErrorCode::InvalidStakePoolVault
+        );
+        require!(
+            stake_pool.stake_mint.key() == self.stake_mint.key(),
+            ErrorCode::InvalidStakeMint
+        );
+        require!(
+            self.from.owner.key() == self.claim_base.owner.key(),
+            ErrorCode::InvalidAuthority
+        );
         Ok(())
     }
     /// Transfer the owner's previously staked tokens back.
@@ -49,16 +52,11 @@ impl<'info> Withdraw<'info> {
             to: self.destination.to_account_info(),
             authority: self.claim_base.stake_pool.to_account_info(),
         };
-        let stake_pool_signer_seeds: &[&[&[u8]]] = &[&[
-            &[stake_pool.nonce],
-            &stake_pool.authority.to_bytes(),
-            b"stakePool",
-            &[stake_pool.bump_seed],
-        ]];
+        let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
         let cpi_ctx = CpiContext::new_with_signer(
             self.claim_base.token_program.to_account_info(),
             cpi_accounts,
-            stake_pool_signer_seeds,
+            signer_seeds,
         );
         token::transfer(
             cpi_ctx,
@@ -82,6 +80,12 @@ impl<'info> Withdraw<'info> {
             stake_pool.max_weight,
         );
         token::burn(cpi_ctx, effective_stake_token_amount)
+    }
+
+    pub fn close_stake_deposit_receipt(&self) -> Result<()> {
+        self.claim_base
+            .stake_deposit_receipt
+            .close(self.claim_base.owner.to_account_info())
     }
 }
 
@@ -117,5 +121,7 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
     ctx.accounts
         .claim_base
         .update_reward_pools_last_amount(claimed_amounts)?;
+
+    ctx.accounts.close_stake_deposit_receipt()?;
     Ok(())
 }
