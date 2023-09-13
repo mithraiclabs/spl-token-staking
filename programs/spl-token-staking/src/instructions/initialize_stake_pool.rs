@@ -26,6 +26,7 @@ pub struct InitializeStakePool<'info> {
       init,
       seeds = [
         &nonce.to_le_bytes(),
+        mint.key().as_ref(),
         authority.key().as_ref(),
         b"stakePool",
       ],
@@ -41,7 +42,7 @@ pub struct InitializeStakePool<'info> {
       seeds = [&stake_pool.key().to_bytes()[..], b"stakeMint"],
       bump,
       payer = authority,
-      mint::decimals = u8::max(mint.decimals - get_digit_shift_by_max_scalar(max_weight), 0),
+      mint::decimals = mint.decimals.checked_sub(get_digit_shift_by_max_scalar(max_weight)).unwrap_or_default(),
       mint::authority = stake_pool,
     )]
     pub stake_mint: Account<'info, Mint>,
@@ -78,6 +79,7 @@ pub fn handler(
     }
     let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
     stake_pool.authority = ctx.accounts.authority.key();
+    stake_pool.mint = ctx.accounts.mint.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
     stake_pool.base_weight = base_weight;

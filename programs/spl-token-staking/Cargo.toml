@@ -21,3 +21,4 @@ anchor-spl = "0.28.0"
 bytemuck = { version = "1.7", features = ["derive"] }
 jet-proc-macros = { version = "1", package = "jet-proto-proc-macros" }
 static_assertions = "1.1.0"
+uint = "=0.9.1"

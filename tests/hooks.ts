@@ -167,6 +167,7 @@ export const createDepositorSplAccounts = async (
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      mintStake.toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],

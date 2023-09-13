@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use crate::errors::ErrorCode;
+use crate::stake_pool_signer_seeds;
 use crate::state::{StakeDepositReceipt, StakePool};
 
 #[derive(Accounts)]
@@ -20,23 +20,21 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
 
-    #[account(
-      mut,
-      constraint = stake_mint.mint_authority == COption::Some(stake_pool.key()) @ ErrorCode::InvalidAuthority,
-    )]
+    #[account(mut)]
     pub stake_mint: Account<'info, Mint>,
 
-    /// Vault of the StakePool token will be transfer to
+    /// Token account the StakePool token will be transfered to
     #[account(
       mut,
       has_one = owner @ ErrorCode::InvalidAuthority
     )]
     pub destination: Account<'info, TokenAccount>,
 
-    // StakePool owning the vault that will receive the deposit
+    /// StakePool owning the vault that will receive the deposit
     #[account(
       mut,
       has_one = vault @ ErrorCode::InvalidStakePoolVault,
+      has_one = stake_mint @ ErrorCode::InvalidAuthority,
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
 
@@ -78,16 +76,11 @@ impl<'info> Deposit<'info> {
             to: self.destination.to_account_info(),
             authority: self.stake_pool.to_account_info(),
         };
-        let mint_signer_seeds: &[&[&[u8]]] = &[&[
-            &[stake_pool.nonce],
-            &stake_pool.authority.to_bytes(),
-            b"stakePool",
-            &[stake_pool.bump_seed],
-        ]];
+        let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
         let cpi_ctx = CpiContext::new_with_signer(
             self.token_program.to_account_info(),
             cpi_accounts,
-            mint_signer_seeds,
+            signer_seeds,
         );
 
         token::mint_to(cpi_ctx, effective_amount)
@@ -121,6 +114,9 @@ pub fn handler<'info>(
         stake_deposit_receipt.deposit_timestamp = Clock::get()?.unix_timestamp;
 
         // iterate over reward pools setting the initial "claimed" amount based on `rewards_per_effective_stake`.
+        //  Setting these calimed amounts to the current rewards per effective stake, marks where this
+        //  deposit receipt can start accumulating rewards. Now any more rewards added to a reward pool will 
+        //  be claimable, on a pro-rated basis, by this stake receipt.
         stake_deposit_receipt.claimed_amounts = stake_pool.get_claimed_amounts_of_reward_pools();
 
         stake_pool.total_weighted_stake = stake_pool

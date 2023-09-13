@@ -13,6 +13,7 @@ describe("initialize-stake-pool", () => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(nonce).toArrayLike(Buffer, "le", 1),
+      mintToBeStaked.toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
@@ -59,6 +60,7 @@ describe("initialize-stake-pool", () => {
     assert.isNotNull(stakeMintAccount);
     assert.isNotNull(vault);
     assert.isTrue(stakePool.authority.equals(program.provider.publicKey));
+    assert.equal(stakePool.mint.toString(), mintToBeStaked.toString());
     assert.isTrue(stakePool.stakeMint.equals(stakeMintKey));
     assert.isTrue(stakePool.vault.equals(vaultKey));
     assert.isTrue(stakePool.totalWeightedStake.eq(new anchor.BN(0)));

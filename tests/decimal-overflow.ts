@@ -23,6 +23,7 @@ describe("decimal-overflow", () => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      mintToBeStaked.toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],

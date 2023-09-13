@@ -17,6 +17,7 @@ import { SplTokenStaking } from "@mithraic-labs/token-staking";
 export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
+  stakePoolMint: anchor.Address,
   depositor: anchor.web3.Keypair,
   vaultMintAccount: anchor.Address,
   stakeMintAccount: anchor.Address,
@@ -28,6 +29,7 @@ export const deposit = async (
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],

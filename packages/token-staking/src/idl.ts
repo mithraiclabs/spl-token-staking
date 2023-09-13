@@ -8,6 +8,10 @@ const _SplTokenStakingIDL = {
   instructions: [
     {
       name: "initializeStakePool",
+      docs: [
+        "Create a [StakePool](state::StakePool) and initialize the Mint that will",
+        "represent effective stake weight.",
+      ],
       accounts: [
         {
           name: "authority",
@@ -81,6 +85,11 @@ const _SplTokenStakingIDL = {
     },
     {
       name: "addRewardPool",
+      docs: [
+        "Add a [RewardPool](state::RewardPool) to an existing [StakePool](state::StakePool).",
+        "",
+        "Can only be invoked by the StakePool's authority.",
+      ],
       accounts: [
         {
           name: "authority",
@@ -133,6 +142,19 @@ const _SplTokenStakingIDL = {
     },
     {
       name: "deposit",
+      docs: [
+        "Deposit (aka Stake) a wallet's tokens to the specified [StakePool](state::StakePool).",
+        "Depending on the `lockup_duration` and the StakePool's weighting configuration, the",
+        "wallet initiating the deposit will receive tokens representing their effective stake",
+        "(i.e. deposited amount multiplied by the lockup weight).",
+        "",
+        "For each RewardPool, the latest amount per effective stake will be recalculated to ensure",
+        "the latest accumulated rewards are attributed to all previous depositors and not the deposit",
+        "resulting from this instruction.",
+        "",
+        "A [StakeDepositReceipt](state::StakeDepositReceipt) will be created to track the",
+        "lockup duration, effective weight, and claimable rewards.",
+      ],
       accounts: [
         {
           name: "owner",
@@ -163,12 +185,13 @@ const _SplTokenStakingIDL = {
           name: "destination",
           isMut: true,
           isSigner: false,
-          docs: ["Vault of the StakePool token will be transfer to"],
+          docs: ["Token account the StakePool token will be transfered to"],
         },
         {
           name: "stakePool",
           isMut: true,
           isSigner: false,
+          docs: ["StakePool owning the vault that will receive the deposit"],
         },
         {
           name: "stakeDepositReceipt",
@@ -208,6 +231,14 @@ const _SplTokenStakingIDL = {
     },
     {
       name: "claimAll",
+      docs: [
+        "Claim unclaimed rewards from all RewardPools for a specific StakeDepositReceipt.",
+        "",
+        "For each RewardPool, the latest amount per effective stake will be recalculated to ensure",
+        "the latest accumulated rewards are accounted for in the claimable amount. The StakeDepositReceipt",
+        "is also updated so that the latest claimed amount is equivalent, so that their claimable amount",
+        "is 0 after invoking the claim instruction.",
+      ],
       accounts: [
         {
           name: "claimBase",
@@ -243,6 +274,18 @@ const _SplTokenStakingIDL = {
     },
     {
       name: "withdraw",
+      docs: [
+        "Withdraw (aka Unstake) a wallet's tokens for a specific StakeDepositReceipt. The StakePool's",
+        "total weighted stake will be decreased by the effective stake amount of the StakeDepositReceipt",
+        "and the original amount deposited will be transferred out of the vault.",
+        "",
+        "All rewards will be claimed. So, for each RewardPool, the latest amount per effective stake will",
+        "be recalculated to ensure the latest accumulated rewards are accounted for in the claimable amount.",
+        "The StakeDepositReceipt is also updated so that the latest claimed amount is equivalent, so that",
+        "their claimable amount is 0 after invoking the withdraw instruction.",
+        "",
+        "StakeDepositReceipt account is closed after this instruction.",
+      ],
       accounts: [
         {
           name: "claimBase",
@@ -327,6 +370,11 @@ const _SplTokenStakingIDL = {
             type: "publicKey",
           },
           {
+            name: "mint",
+            docs: ["Mint of the token being staked"],
+            type: "publicKey",
+          },
+          {
             name: "stakeMint",
             docs: ["Mint of the token representing effective stake"],
             type: "publicKey",
@@ -346,14 +394,20 @@ const _SplTokenStakingIDL = {
           {
             name: "baseWeight",
             docs: [
-              "Base weight for staking lockup. In terms of 1 / SCALE_FACTOR_BASE",
+              "The minimum weight received for staking. In terms of 1 / SCALE_FACTOR_BASE.",
+              "Examples:",
+              "* `min_weight = 1 x SCALE_FACTOR_BASE` = minmum of 1x multiplier for > min_duration staking",
+              "* `min_weight = 2 x SCALE_FACTOR_BASE` = minmum of 2x multiplier for > min_duration staking",
             ],
             type: "u64",
           },
           {
             name: "maxWeight",
             docs: [
-              "Maximum weight for staking lockup (i.e. weight multiplier when locked up for max duration). In terms of 1 / SCALE_FACTOR_BASE",
+              "Maximum weight for staking lockup (i.e. weight multiplier when locked",
+              "up for max duration). In terms of 1 / SCALE_FACTOR_BASE. Examples:",
+              "* A `max_weight = 1 x SCALE_FACTOR_BASE` = 1x multiplier for max staking duration",
+              "* A `max_weight = 2 x SCALE_FACTOR_BASE` = 2x multiplier for max staking duration",
             ],
             type: "u64",
           },

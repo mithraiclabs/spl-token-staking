@@ -30,6 +30,7 @@ describe("claim-all", () => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+      mintToBeStaked.toBuffer(),
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
@@ -68,7 +69,9 @@ describe("claim-all", () => {
       initStakePool(program, mintToBeStaked, stakePoolNonce),
     ]);
     // add reward pool to the initialized stake pool
-    await Promise.all([addRewardPool(program, stakePoolNonce, rewardMint1)]);
+    await Promise.all([
+      addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1),
+    ]);
   });
 
   it("Claim all owed rewards", async () => {
@@ -86,6 +89,7 @@ describe("claim-all", () => {
     await deposit(
       program,
       stakePoolNonce,
+      mintToBeStaked,
       depositor1,
       mintToBeStakedAccountKey,
       stakeMintAccountKey,
@@ -181,6 +185,7 @@ describe("claim-all", () => {
     await deposit(
       program,
       stakePoolNonce,
+      mintToBeStaked,
       depositor2,
       mintToBeStakedAccountKey2,
       stakeMintAccountKey2,
@@ -342,7 +347,13 @@ describe("claim-all", () => {
   });
 
   it("should collect multiple rewards", async () => {
-    await addRewardPool(program, stakePoolNonce, rewardMint2, 1);
+    await addRewardPool(
+      program,
+      stakePoolNonce,
+      mintToBeStaked,
+      rewardMint2,
+      1
+    );
     const receiptNonce = 0;
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
