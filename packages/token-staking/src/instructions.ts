@@ -112,6 +112,7 @@ export const addRewardPool = async (
  * @param duration
  * @param receiptNonce
  * @param rewardVaults
+ * @param options
  */
 export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
@@ -122,7 +123,14 @@ export const deposit = async (
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
-  rewardVaults: anchor.web3.PublicKey[] = []
+  rewardVaults: anchor.web3.PublicKey[] = [],
+  options: {
+    preInstructions: anchor.web3.TransactionInstruction[];
+    postInstructions: anchor.web3.TransactionInstruction[];
+  } = {
+    preInstructions: [],
+    postInstructions: [],
+  }
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -151,7 +159,7 @@ export const deposit = async (
     program.programId
   );
 
-  await program.methods
+  return program.methods
     .deposit(receiptNonce, amount, duration)
     .accounts({
       owner: program.provider.publicKey,
@@ -172,6 +180,7 @@ export const deposit = async (
         isSigner: false,
       }))
     )
-    .signers([])
+    .preInstructions(options.preInstructions)
+    .postInstructions(options.postInstructions)
     .rpc({ skipPreflight: true });
 };
