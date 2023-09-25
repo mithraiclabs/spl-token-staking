@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
-import { SCALE_FACTOR_BASE, U64_MAX } from "./constants";
+import { SCALE_FACTOR_BASE, SCALE_FACTOR_BASE_BN, U64_MAX } from "./constants";
 import { SplTokenStaking } from "./idl";
-import { StakeDepositReceiptData } from "./types";
+import { StakeDepositReceiptData, StakePool } from "./types";
 
 /**
  * Calculate the digit precision loss based on the given maximum weight.
@@ -120,4 +120,60 @@ export const getNextUnusedStakeReceiptNonce = async (
     }
   }
   throw new Error("No more nonces available");
+};
+
+/**
+ * Filter StakePool's `rewardPools` for those that are initialized.
+ * @param rewardPools
+ * @returns
+ */
+export const getRewardPoolPublicKeys = (
+  rewardPools: StakePool["rewardPools"]
+) =>
+  rewardPools
+    .filter((rp) => !rp.rewardVault.equals(anchor.web3.PublicKey.default))
+    .map((rp) => rp.rewardVault);
+
+/**
+ * List of remaining accounts for the `Withdraw` or `Claim` instructions.
+ * @param rewardPools
+ * @returns
+ */
+export const getRemainingAccountsForClaimOrWithdraw = (
+  rewardPools: StakePool["rewardPools"]
+) => {
+  const filteredPools = getRewardPoolPublicKeys(rewardPools);
+  return filteredPools.map((key) => ({
+    pubkey: key,
+    isWritable: true,
+    isSigner: false,
+  }));
+};
+
+/**
+ * Calculate stake weight based on StakePool parameters.
+ * @param minDuration 
+ * @param maxDuration 
+ * @param baseWeight 
+ * @param maxWeight 
+ * @param duration 
+ * @returns 
+ */
+export const calculateStakeWeight = (
+  minDuration: anchor.BN,
+  maxDuration: anchor.BN,
+  baseWeight: anchor.BN,
+  maxWeight: anchor.BN,
+  duration: anchor.BN
+) => {
+  const durationSpan = maxDuration.sub(minDuration);
+  const durationExceedingMin = duration.sub(minDuration);
+  return anchor.BN.max(
+    durationExceedingMin
+      .mul(SCALE_FACTOR_BASE_BN)
+      .mul(maxWeight)
+      .div(durationSpan)
+      .div(SCALE_FACTOR_BASE_BN),
+    baseWeight
+  );
 };
