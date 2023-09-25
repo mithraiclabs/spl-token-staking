@@ -106,7 +106,7 @@ export const addRewardPool = async (
  * @param program
  * @param stakePoolNonce
  * @param stakePoolMint
- * @param vaultMintAccount
+ * @param from
  * @param stakeMintAccount
  * @param amount
  * @param duration
@@ -118,15 +118,15 @@ export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
   stakePoolMint: anchor.Address,
-  vaultMintAccount: anchor.Address,
+  from: anchor.Address,
   stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
   rewardVaults: anchor.web3.PublicKey[] = [],
   options: {
-    preInstructions: anchor.web3.TransactionInstruction[];
-    postInstructions: anchor.web3.TransactionInstruction[];
+    preInstructions?: anchor.web3.TransactionInstruction[];
+    postInstructions?: anchor.web3.TransactionInstruction[];
   } = {
     preInstructions: [],
     postInstructions: [],
@@ -163,7 +163,7 @@ export const deposit = async (
     .deposit(receiptNonce, amount, duration)
     .accounts({
       owner: program.provider.publicKey,
-      from: vaultMintAccount,
+      from,
       stakePool: stakePoolKey,
       vault: vaultKey,
       stakeMint,
