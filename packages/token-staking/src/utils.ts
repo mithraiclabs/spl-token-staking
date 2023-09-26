@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SCALE_FACTOR_BASE, SCALE_FACTOR_BASE_BN, U64_MAX } from "./constants";
 import { SplTokenStaking } from "./idl";
 import { StakeDepositReceiptData, StakePool } from "./types";
@@ -137,27 +138,43 @@ export const getRewardPoolPublicKeys = (
 /**
  * List of remaining accounts for the `Withdraw` or `Claim` instructions.
  * @param rewardPools
+ * @param mints
+ * @param owner
  * @returns
  */
 export const getRemainingAccountsForClaimOrWithdraw = (
-  rewardPools: StakePool["rewardPools"]
+  rewardPools: StakePool["rewardPools"],
+  mints: (anchor.web3.PublicKey | null)[],
+  owner: anchor.web3.PublicKey
 ) => {
-  const filteredPools = getRewardPoolPublicKeys(rewardPools);
-  return filteredPools.map((key) => ({
-    pubkey: key,
-    isWritable: true,
-    isSigner: false,
-  }));
+  return rewardPools.reduce((acc, rp, index) => {
+    const mint = mints[index];
+    if (rp.rewardVault.equals(anchor.web3.PublicKey.default) || !mint) {
+      return acc;
+    }
+    const tokenAccountKey = getAssociatedTokenAddressSync(mint, owner);
+    acc.push({
+      pubkey: rp.rewardVault,
+      isWritable: true,
+      isSigner: false,
+    });
+    acc.push({
+      pubkey: tokenAccountKey,
+      isWritable: true,
+      isSigner: false,
+    });
+    return acc;
+  }, [] as anchor.web3.AccountMeta[]);
 };
 
 /**
  * Calculate stake weight based on StakePool parameters.
- * @param minDuration 
- * @param maxDuration 
- * @param baseWeight 
- * @param maxWeight 
- * @param duration 
- * @returns 
+ * @param minDuration
+ * @param maxDuration
+ * @param baseWeight
+ * @param maxWeight
+ * @param duration
+ * @returns
  */
 export const calculateStakeWeight = (
   minDuration: anchor.BN,
