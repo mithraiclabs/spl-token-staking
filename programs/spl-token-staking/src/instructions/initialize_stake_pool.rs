@@ -3,7 +3,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::{
     errors::ErrorCode,
-    state::{get_digit_shift_by_max_scalar, StakePool},
+    state::{get_digit_shift_by_max_scalar, StakePool, SCALE_FACTOR_BASE},
 };
 
 #[derive(Accounts)]
@@ -66,7 +66,7 @@ pub struct InitializeStakePool<'info> {
 pub fn handler(
     ctx: Context<InitializeStakePool>,
     nonce: u8,
-    base_weight: u64,
+    _base_weight: u64,
     max_weight: u64,
     min_duration: u64,
     max_duration: u64,
@@ -74,7 +74,7 @@ pub fn handler(
     if min_duration > max_duration {
         return Err(ErrorCode::InvalidStakePoolDuration.into());
     }
-    if base_weight > max_weight {
+    if SCALE_FACTOR_BASE > max_weight {
         return Err(ErrorCode::InvalidStakePoolWeight.into());
     }
     let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
@@ -82,7 +82,7 @@ pub fn handler(
     stake_pool.mint = ctx.accounts.mint.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
-    stake_pool.base_weight = base_weight;
+    stake_pool.base_weight = SCALE_FACTOR_BASE;
     stake_pool.max_weight = max_weight;
     stake_pool.min_duration = min_duration;
     stake_pool.max_duration = max_duration;

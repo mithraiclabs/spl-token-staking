@@ -17,7 +17,7 @@ use crate::{errors::ErrorCode, math::U192};
  *  (256 accounts per LUT - 8) / 2 = 124 reward pool max from account limits
  *
 */
-pub const MAX_REWARD_POOLS: usize = 5;
+pub const MAX_REWARD_POOLS: usize = 10;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 
@@ -67,7 +67,7 @@ impl RewardPool {
     }
 }
 
-#[assert_size(512)]
+#[assert_size(832)]
 #[account(zero_copy)]
 #[repr(C)]
 pub struct StakePool {
@@ -191,6 +191,7 @@ impl StakePool {
 
     /// Calculate the stake weight based on a given duration for the current StakePool
     pub fn get_stake_weight(&self, duration: u64) -> u64 {
+        // TODO handle/test base_weight != 1
         let duration_span = self.max_duration.checked_sub(self.min_duration).unwrap();
         let duration_exceeding_min = duration.checked_sub(self.min_duration).unwrap();
         let calculated_weight = U192::from(duration_exceeding_min)
