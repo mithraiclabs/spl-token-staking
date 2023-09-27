@@ -66,10 +66,6 @@ const _SplTokenStakingIDL = {
           type: "u8",
         },
         {
-          name: "baseWeight",
-          type: "u64",
-        },
-        {
           name: "maxWeight",
           type: "u64",
         },
@@ -387,7 +383,7 @@ const _SplTokenStakingIDL = {
                 {
                   defined: "RewardPool",
                 },
-                5,
+                10,
               ],
             },
           },
@@ -485,7 +481,7 @@ const _SplTokenStakingIDL = {
               "The amount per reward that has been claimed or perceived to be claimed.\n    Indexes align with the StakedPool reward_pools property.",
             ],
             type: {
-              array: ["u128", 5],
+              array: ["u128", 10],
             },
           },
         ],

@@ -49,7 +49,6 @@ describe("decimal-overflow", () => {
     false,
     TOKEN_PROGRAM_ID
   );
-  const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
   const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
   const minDuration = new anchor.BN(1000);
   const maxDuration = new anchor.BN(4 * 31536000);
@@ -93,7 +92,6 @@ describe("decimal-overflow", () => {
         program,
         mintToBeStaked,
         stakePoolNonce,
-        baseWeight,
         maxWeight,
         minDuration,
         maxDuration

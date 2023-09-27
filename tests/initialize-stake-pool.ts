@@ -34,13 +34,7 @@ describe("initialize-stake-pool", () => {
     const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
     const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
     await program.methods
-      .initializeStakePool(
-        nonce,
-        baseWeight,
-        maxWeight,
-        minDuration,
-        maxDuration
-      )
+      .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
       .accounts({
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,

@@ -67,7 +67,6 @@ describe("deposit", () => {
   );
   const deposit1Amount = new anchor.BN(5_000_000_000);
   const deposit2Amount = new anchor.BN(1_000_000_000);
-  const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
   const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
   const minDuration = new anchor.BN(1000);
   const maxDuration = new anchor.BN(4 * 31536000);
@@ -82,7 +81,6 @@ describe("deposit", () => {
         program,
         mintToBeStaked,
         stakePoolNonce,
-        baseWeight,
         maxWeight,
         minDuration,
         maxDuration

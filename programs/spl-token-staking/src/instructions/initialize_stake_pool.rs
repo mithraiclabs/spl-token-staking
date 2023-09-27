@@ -9,7 +9,6 @@ use crate::{
 #[derive(Accounts)]
 #[instruction(
   nonce: u8,
-  base_weight: u64,
   max_weight: u64,
   min_duration: u64,
   max_duration: u64,
@@ -66,7 +65,6 @@ pub struct InitializeStakePool<'info> {
 pub fn handler(
     ctx: Context<InitializeStakePool>,
     nonce: u8,
-    _base_weight: u64,
     max_weight: u64,
     min_duration: u64,
     max_duration: u64,
