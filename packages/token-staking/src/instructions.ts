@@ -17,7 +17,6 @@ export const initStakePool = async (
   program: anchor.Program<SplTokenStaking>,
   mint: anchor.Address,
   nonce = 0,
-  baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
   minDuration = new anchor.BN(0),
   maxDuration = new anchor.BN("18446744073709551615")
@@ -40,7 +39,7 @@ export const initStakePool = async (
     program.programId
   );
   await program.methods
-    .initializeStakePool(nonce, baseWeight, maxWeight, minDuration, maxDuration)
+    .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
     .accounts({
       authority: program.provider.publicKey,
       stakePool: stakePoolKey,
