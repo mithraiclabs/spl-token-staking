@@ -2,7 +2,7 @@ type Mutable<T> = {
   -readonly [K in keyof T]: Mutable<T[K]>;
 };
 
-const _SplTokenStakingIDL = {
+export const _SplTokenStakingIDL = {
   version: "0.1.0",
   name: "spl_token_staking",
   instructions: [
@@ -150,6 +150,9 @@ const _SplTokenStakingIDL = {
         "",
         "A [StakeDepositReceipt](state::StakeDepositReceipt) will be created to track the",
         "lockup duration, effective weight, and claimable rewards.",
+        "",
+        "Remaining accounts are required: pass the `reward_vault` of each reward pool. These must be",
+        "passed in the same order as `StakePool.reward_pools`",
       ],
       accounts: [
         {
@@ -281,6 +284,13 @@ const _SplTokenStakingIDL = {
         "their claimable amount is 0 after invoking the withdraw instruction.",
         "",
         "StakeDepositReceipt account is closed after this instruction.",
+        "",
+        "Remaining accounts are required: pass the `reward_vault` of each reward pool. These must be",
+        "passed in the same order as `StakePool.reward_pools`. The owner (the token account which",
+        "gains the withdrawn funds) must also be passed be, in pairs like so:",
+        "* `<reward_vault[0]><owner[0]>`",
+        "* `<reward_vault[1]><owner[1]>",
+        "* ...etc",
       ],
       accounts: [
         {
@@ -377,7 +387,10 @@ const _SplTokenStakingIDL = {
           },
           {
             name: "rewardPools",
-            docs: ["Array of RewardPools that apply to the stake pool"],
+            docs: [
+              "Array of RewardPools that apply to the stake pool.",
+              "Unused entries are Pubkey default. In arbitrary order, and may have gaps.",
+            ],
             type: {
               array: [
                 {
@@ -410,14 +423,14 @@ const _SplTokenStakingIDL = {
           {
             name: "minDuration",
             docs: [
-              "Minimum duration for lockup. At this point, the staker would receive the base weight.",
+              "Minimum duration for lockup. At this point, the staker would receive the base weight. In seconds.",
             ],
             type: "u64",
           },
           {
             name: "maxDuration",
             docs: [
-              "Maximum duration for lockup. At this point, the staker would receive the max weight.",
+              "Maximum duration for lockup. At this point, the staker would receive the max weight. In seconds.",
             ],
             type: "u64",
           },
@@ -434,7 +447,13 @@ const _SplTokenStakingIDL = {
           {
             name: "padding0",
             type: {
-              array: ["u8", 14],
+              array: ["u8", 6],
+            },
+          },
+          {
+            name: "reserved0",
+            type: {
+              array: ["u8", 8],
             },
           },
         ],
@@ -472,13 +491,14 @@ const _SplTokenStakingIDL = {
           },
           {
             name: "effectiveStake",
-            docs: ["Amount of stake weighted by lockup duration"],
+            docs: ["Amount of stake weighted by lockup duration."],
             type: "u128",
           },
           {
             name: "claimedAmounts",
             docs: [
-              "The amount per reward that has been claimed or perceived to be claimed.\n    Indexes align with the StakedPool reward_pools property.",
+              "The amount per reward that has been claimed or perceived to be claimed. Indexes align with",
+              "the StakedPool reward_pools property.",
             ],
             type: {
               array: ["u128", 10],

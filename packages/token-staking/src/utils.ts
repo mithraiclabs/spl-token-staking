@@ -8,15 +8,24 @@ import { StakeDepositReceiptData, StakePool } from "./types";
  * Calculate the digit precision loss based on the given maximum weight.
  *
  * @param maxWeight
+ * @param maxShift - the decimals of the native mint govern the max allowable shift, as negative
+ * exponents are not allowed. Can ignore if you are VERY CONFIDENT your shift will not overflow.
  * @returns
  */
-export const getDigitShift = (maxWeight: bigint) => {
+export const getDigitShift = (maxWeight: bigint, maxShift: number = 999) => {
+  if (maxShift == 0) {
+    return 0;
+  }
+
   let digitShift = 0;
   while (
     (maxWeight * U64_MAX) / SCALE_FACTOR_BASE / BigInt(10 ** digitShift) >
     U64_MAX
   ) {
     digitShift += 1;
+    if (digitShift == maxShift) {
+      return maxShift;
+    }
   }
   return digitShift;
 };

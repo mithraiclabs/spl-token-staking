@@ -50,6 +50,9 @@ pub mod spl_token_staking {
     /// 
     /// A [StakeDepositReceipt](state::StakeDepositReceipt) will be created to track the
     /// lockup duration, effective weight, and claimable rewards.
+    /// 
+    /// Remaining accounts are required: pass the `reward_vault` of each reward pool. These must be
+    /// passed in the same order as `StakePool.reward_pools`
     pub fn deposit(
         ctx: Context<Deposit>,
         nonce: u32,
@@ -79,6 +82,13 @@ pub mod spl_token_staking {
     /// their claimable amount is 0 after invoking the withdraw instruction.
     /// 
     /// StakeDepositReceipt account is closed after this instruction.
+    /// 
+    /// Remaining accounts are required: pass the `reward_vault` of each reward pool. These must be
+    /// passed in the same order as `StakePool.reward_pools`. The owner (the token account which
+    /// gains the withdrawn funds) must also be passed be, in pairs like so:
+    /// * `<reward_vault[0]><owner[0]>`
+    /// * `<reward_vault[1]><owner[1]>
+    /// * ...etc
     pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
         withdraw::handler(ctx)
     }

@@ -10,13 +10,10 @@ use crate::{errors::ErrorCode, math::U192};
 //  And spinning up a new StakePool, migrating stake, and changing governance (if integrated)
 //  should be considered not feasible.
 
-/**
- * Maximum number of RewardPools on a StakePool.
- *
- * Withdraw requires 8 + 2 x num_reward_pools accounts and no arguments.
- *  (256 accounts per LUT - 8) / 2 = 124 reward pool max from account limits
- *
-*/
+/// Maximum number of RewardPools on a StakePool.
+///
+///  * Withdraw requires 8 + 2 x num_reward_pools accounts and no arguments.
+///  * (256 accounts per LUT - 8) / 2 = 124 reward pool max from account limits
 pub const MAX_REWARD_POOLS: usize = 10;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
@@ -82,7 +79,8 @@ pub struct StakePool {
     pub mint: Pubkey,
     /** Mint of the token representing effective stake */
     pub stake_mint: Pubkey,
-    /** Array of RewardPools that apply to the stake pool */
+    /// Array of RewardPools that apply to the stake pool.
+    /// Unused entries are Pubkey default. In arbitrary order, and may have gaps.
     pub reward_pools: [RewardPool; MAX_REWARD_POOLS],
     /// The minimum weight received for staking. In terms of 1 / SCALE_FACTOR_BASE.
     /// Examples:
@@ -94,15 +92,17 @@ pub struct StakePool {
     /// * A `max_weight = 1 x SCALE_FACTOR_BASE` = 1x multiplier for max staking duration
     /// * A `max_weight = 2 x SCALE_FACTOR_BASE` = 2x multiplier for max staking duration
     pub max_weight: u64,
-    /** Minimum duration for lockup. At this point, the staker would receive the base weight. */
+    /** Minimum duration for lockup. At this point, the staker would receive the base weight. In seconds. */
     pub min_duration: u64,
-    /** Maximum duration for lockup. At this point, the staker would receive the max weight. */
+    /** Maximum duration for lockup. At this point, the staker would receive the max weight. In seconds. */
     pub max_duration: u64,
     /** Nonce to derive multiple stake pools from same mint */
     pub nonce: u8,
     /** Bump seed for stake_mint */
     pub bump_seed: u8,
-    _padding0: [u8; 14],
+    // padding to next 8-byte
+    _padding0: [u8; 6],
+    _reserved0: [u8; 8],
 }
 
 impl StakePool {
@@ -111,10 +111,11 @@ impl StakePool {
     pub fn get_claimed_amounts_of_reward_pools(&self) -> [u128; MAX_REWARD_POOLS] {
         let mut ret = [0u128; MAX_REWARD_POOLS];
         for (index, reward_pool) in self.reward_pools.iter().enumerate() {
-            ret[index] = reward_pool.rewards_per_effective_stake
+            ret[index] = reward_pool.rewards_per_effective_stake;
         }
         ret
     }
+    
 
     /// Update amount of reward each effective stake should receive based on current deposits.
     /// Iterates over reward pools:
@@ -129,7 +130,8 @@ impl StakePool {
         remaining_accounts: &[AccountInfo<'info>],
         reward_vault_account_offset: usize,
     ) -> Result<()> {
-        if self.total_weighted_stake == 0 {
+        let total_weighted_stake = self.total_weighted_stake;
+        if total_weighted_stake == 0 {
             // do nothing if total stake is 0. This will allow the first
             // depositor to collect all of the rewards accumulated thus far.
             return Ok(());
@@ -142,14 +144,22 @@ impl StakePool {
                 continue;
             }
 
+            if remaining_accounts_index > remaining_accounts.len() {
+                msg!("Missing at least one reward vault account");
+                return err!(ErrorCode::InvalidRewardPoolVaultIndex);
+            }
             let account_info = &remaining_accounts[remaining_accounts_index];
 
             // assert that the remaining account indexes and reward pool
             // indexes line up.
-            require!(
-                reward_pool.reward_vault == account_info.key(),
-                ErrorCode::InvalidRewardPoolVaultIndex
-            );
+            if reward_pool.reward_vault != account_info.key() {
+                msg!(
+                    "expected pool: {:?} but got {:?}",
+                    reward_pool.reward_vault,
+                    account_info.key()
+                );
+                return err!(ErrorCode::InvalidRewardPoolVault);
+            }
 
             let token_account: Account<'info, TokenAccount> =
                 Account::try_from(&account_info).map_err(|_| ErrorCode::InvalidRewardPoolVault)?;
@@ -177,14 +187,16 @@ impl StakePool {
                 .unwrap();
 
             let additional_rewards_per_effective_stake = scaled_balance_diff
-                .checked_div(self.total_weighted_stake)
+                .checked_div(total_weighted_stake)
                 .unwrap();
 
             reward_pool.last_amount = token_account.amount;
-            reward_pool.rewards_per_effective_stake = reward_pool
+            let rewards_updated = reward_pool
                 .rewards_per_effective_stake
                 .checked_add(additional_rewards_per_effective_stake)
                 .unwrap();
+
+            reward_pool.rewards_per_effective_stake = rewards_updated;
         }
         Ok(())
     }
@@ -221,10 +233,10 @@ pub struct StakeDepositReceipt {
     pub deposit_timestamp: i64,
     /** Amount of SPL token deposited */
     pub deposit_amount: u64,
-    /** Amount of stake weighted by lockup duration */
+    /** Amount of stake weighted by lockup duration. */
     pub effective_stake: u128,
-    /** The amount per reward that has been claimed or perceived to be claimed.
-    Indexes align with the StakedPool reward_pools property. */
+    /// The amount per reward that has been claimed or perceived to be claimed. Indexes align with
+    /// the StakedPool reward_pools property.
     pub claimed_amounts: [u128; MAX_REWARD_POOLS],
 }
 
