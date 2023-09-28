@@ -4,12 +4,13 @@ import { airdropSol, mintToBeStaked, rewardMint1, rewardMint2 } from "./hooks";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 import { SplTokenStaking, initStakePool } from "@mithraic-labs/token-staking";
+import { assertBNEqual, assertKeysEqual } from "./genericTests";
 
 describe("add-reward-pool", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgramInstance = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
-  const stakePoolNonce = 2;
+  const stakePoolNonce = 3;
 
   before(async () => {
     await initStakePool(program, mintToBeStaked, stakePoolNonce);
@@ -50,18 +51,18 @@ describe("add-reward-pool", () => {
       tokenProgramInstance.account.account.fetch(rewardVaultKey),
       program.account.stakePool.fetch(stakePoolKey),
     ]);
-    assert.isTrue(rewardVault.mint.equals(rewardMint1));
-    assert.isTrue(rewardVault.owner.equals(stakePoolKey));
-    assert.isTrue(
-      stakePool.rewardPools[rewardPoolIndex].rewardVault.equals(rewardVaultKey)
+    assertKeysEqual(rewardVault.mint, rewardMint1);
+    assertKeysEqual(rewardVault.owner, stakePoolKey);
+    assertKeysEqual(
+      stakePool.rewardPools[rewardPoolIndex].rewardVault,
+      rewardVaultKey
     );
-    assert.isTrue(
-      stakePool.rewardPools[rewardPoolIndex].lastAmount.eq(new anchor.BN(0))
-    );
-    assert.isTrue(
-      stakePool.rewardPools[rewardPoolIndex].rewardsPerEffectiveStake.eq(
-        new anchor.BN(0)
-      )
+    assertBNEqual(stakePool.rewardPools[rewardPoolIndex].lastAmount, 0);
+    assertBNEqual(
+      new anchor.BN(
+        stakePool.rewardPools[rewardPoolIndex].rewardsPerEffectiveStake
+      ),
+      0
     );
   });
 

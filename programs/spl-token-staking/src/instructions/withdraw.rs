@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, TokenAccount, Transfer};
 
-use crate::{errors::ErrorCode, state::StakeDepositReceipt, stake_pool_signer_seeds};
+use crate::{errors::ErrorCode, stake_pool_signer_seeds, state::StakeDepositReceipt};
 
 use super::claim_base::*;
 
@@ -100,7 +100,7 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
         // Recalculate rewards for stake prior, so withdrawing user can receive all rewards
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;
         // Decrement total weighted stake for future deposit reward ownership to be calculated correctly
-        stake_pool.total_weighted_stake = stake_pool
+        let total_staked = stake_pool
             .total_weighted_stake
             .checked_sub(
                 ctx.accounts
@@ -109,6 +109,7 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
                     .effective_stake,
             )
             .unwrap();
+        stake_pool.total_weighted_stake = total_staked;
     }
     ctx.accounts.transfer_staked_tokens_to_owner()?;
     ctx.accounts.burn_stake_weight_tokens_from_owner()?;

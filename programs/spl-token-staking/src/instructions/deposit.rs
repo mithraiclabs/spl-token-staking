@@ -98,8 +98,10 @@ pub fn handler<'info>(
     {
         let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
         if lockup_duration < stake_pool.min_duration {
-            return Err(ErrorCode::DurationTooShort.into());
+            return err!(ErrorCode::DurationTooShort);
         }
+        // clamp lockup duration to the max
+        let lockup_duration=  u64::min(lockup_duration, stake_pool.max_duration);
         let stake_deposit_receipt = &mut ctx.accounts.stake_deposit_receipt;
 
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 1usize)?;
@@ -114,15 +116,16 @@ pub fn handler<'info>(
         stake_deposit_receipt.deposit_timestamp = Clock::get()?.unix_timestamp;
 
         // iterate over reward pools setting the initial "claimed" amount based on `rewards_per_effective_stake`.
-        //  Setting these calimed amounts to the current rewards per effective stake, marks where this
-        //  deposit receipt can start accumulating rewards. Now any more rewards added to a reward pool will 
+        //  Setting these claimed amounts to the current rewards per effective stake, marks where this
+        //  deposit receipt can start accumulating rewards. Now any more rewards added to a reward pool will
         //  be claimable, on a pro-rated basis, by this stake receipt.
         stake_deposit_receipt.claimed_amounts = stake_pool.get_claimed_amounts_of_reward_pools();
 
-        stake_pool.total_weighted_stake = stake_pool
+        let total_staked = stake_pool
             .total_weighted_stake
             .checked_add(effect_amount_staked)
             .unwrap();
+        stake_pool.total_weighted_stake = total_staked;
     }
     let stake_pool = ctx.accounts.stake_pool.load()?;
     let effect_amount_staked_tokens = StakeDepositReceipt::get_token_amount_from_stake(

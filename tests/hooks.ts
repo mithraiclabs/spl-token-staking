@@ -16,6 +16,7 @@ const rewardMint2Keypair = anchor.web3.Keypair.generate();
 export const mintToBeStaked = mintToBeStakedKeypair.publicKey;
 export const rewardMint1 = rewardMint1Keypair.publicKey;
 export const rewardMint2 = rewardMint2Keypair.publicKey;
+export const TEST_MINT_DECIMALS = 9;
 
 export const mochaHooks = {
   /* Before hook to run before all tests */
@@ -44,7 +45,7 @@ export const mochaHooks = {
       tx.add(
         createInitializeMintInstruction(
           mintToBeStaked,
-          9,
+          TEST_MINT_DECIMALS,
           program.provider.publicKey,
           undefined
         )
@@ -62,7 +63,7 @@ export const mochaHooks = {
       tx.add(
         createInitializeMintInstruction(
           rewardMint1,
-          9,
+          TEST_MINT_DECIMALS,
           program.provider.publicKey,
           undefined
         )
@@ -79,7 +80,7 @@ export const mochaHooks = {
       tx.add(
         createInitializeMintInstruction(
           rewardMint2,
-          9,
+          TEST_MINT_DECIMALS,
           program.provider.publicKey,
           undefined
         )

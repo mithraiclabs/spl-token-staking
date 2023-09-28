@@ -341,9 +341,9 @@ describe("withdraw", () => {
           },
         ])
         .signers([depositor1])
-        .rpc({ skipPreflight: true });
+        .rpc();
     } catch (err) {
-      assert.equal(err.code, 6009);
+      assert.equal(err.error.errorCode.code, "StakeStillLocked");
       return;
     }
     assert.isTrue(false, "TX should have faile");

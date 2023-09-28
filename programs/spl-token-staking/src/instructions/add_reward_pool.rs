@@ -18,7 +18,8 @@ pub struct AddRewardPool<'info> {
   #[account(
     mut, 
     has_one = authority @ ErrorCode::InvalidAuthority,
-    constraint = stake_pool.load()?.reward_pools[usize::from(index)].reward_vault == Pubkey::default() @ ErrorCode::RewardPoolIndexOccupied,
+    constraint = stake_pool.load()?.reward_pools[usize::from(index)].reward_vault == Pubkey::default() 
+      @ ErrorCode::RewardPoolIndexOccupied,
   )]
   pub stake_pool: AccountLoader<'info, StakePool>,
 
