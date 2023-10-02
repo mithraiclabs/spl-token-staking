@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
-use crate::state::{StakePool, RewardPool};
+use crate::state::{RewardPool, StakePool};
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]

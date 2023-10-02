@@ -4,6 +4,7 @@ use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 use crate::errors::ErrorCode;
 use crate::stake_pool_signer_seeds;
 use crate::state::{StakeDepositReceipt, StakePool};
+use crate::state::u128;
 
 #[derive(Accounts)]
 #[instruction(nonce: u32)]
@@ -111,7 +112,7 @@ pub fn handler<'info>(
         stake_deposit_receipt.stake_pool = ctx.accounts.stake_pool.key();
         stake_deposit_receipt.owner = ctx.accounts.owner.key();
         stake_deposit_receipt.deposit_amount = amount;
-        stake_deposit_receipt.effective_stake = effect_amount_staked;
+        stake_deposit_receipt.effective_stake = u128(effect_amount_staked.to_le_bytes());
         stake_deposit_receipt.lockup_duration = lockup_duration;
         stake_deposit_receipt.deposit_timestamp = Clock::get()?.unix_timestamp;
 
@@ -122,14 +123,14 @@ pub fn handler<'info>(
         stake_deposit_receipt.claimed_amounts = stake_pool.get_claimed_amounts_of_reward_pools();
 
         let total_staked = stake_pool
-            .total_weighted_stake
+            .total_weighted_stake_u128()
             .checked_add(effect_amount_staked)
             .unwrap();
-        stake_pool.total_weighted_stake = total_staked;
+        stake_pool.total_weighted_stake = u128(total_staked.to_le_bytes());
     }
     let stake_pool = ctx.accounts.stake_pool.load()?;
     let effect_amount_staked_tokens = StakeDepositReceipt::get_token_amount_from_stake(
-        ctx.accounts.stake_deposit_receipt.effective_stake,
+        ctx.accounts.stake_deposit_receipt.effective_stake_u128(),
         stake_pool.max_weight,
     );
     ctx.accounts
