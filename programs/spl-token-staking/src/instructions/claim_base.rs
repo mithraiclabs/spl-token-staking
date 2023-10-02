@@ -68,12 +68,12 @@ impl<'info> ClaimBase<'info> {
             let owner_account_index = reward_vault_account_index + 1;
 
             let claimable_per_effective_stake = reward_pool
-                .rewards_per_effective_stake
-                .checked_sub(self.stake_deposit_receipt.claimed_amounts[index])
+                .rewards_per_effective_stake_u128()
+                .checked_sub(self.stake_deposit_receipt.claimed_amounts[index].as_u128())
                 .unwrap();
             let total_claimable = U256::from(claimable_per_effective_stake)
                 .checked_mul(U256::from(
-                    self.stake_deposit_receipt.effective_stake,
+                    self.stake_deposit_receipt.effective_stake_u128(),
                 ))
                 .unwrap()
                 .checked_div(U256::from(SCALE_FACTOR_BASE))
