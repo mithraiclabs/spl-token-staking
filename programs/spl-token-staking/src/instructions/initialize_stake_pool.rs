@@ -3,7 +3,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::{
     errors::ErrorCode,
-    state::{get_digit_shift_by_max_scalar, StakePool, SCALE_FACTOR_BASE},
+    state::{get_digit_shift_by_max_scalar, SCALE_FACTOR_BASE, StakePool},
 };
 
 #[derive(Accounts)]

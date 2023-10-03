@@ -4,6 +4,7 @@ use anchor_spl::token::{self, Burn, Mint, TokenAccount, Transfer};
 use crate::{errors::ErrorCode, stake_pool_signer_seeds, state::StakeDepositReceipt};
 
 use super::claim_base::*;
+use crate::state::u128;
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -76,7 +77,7 @@ impl<'info> Withdraw<'info> {
             cpi_accounts,
         );
         let effective_stake_token_amount = StakeDepositReceipt::get_token_amount_from_stake(
-            self.claim_base.stake_deposit_receipt.effective_stake,
+            self.claim_base.stake_deposit_receipt.effective_stake_u128(),
             stake_pool.max_weight,
         );
         token::burn(cpi_ctx, effective_stake_token_amount)
@@ -101,15 +102,15 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;
         // Decrement total weighted stake for future deposit reward ownership to be calculated correctly
         let total_staked = stake_pool
-            .total_weighted_stake
+            .total_weighted_stake_u128()
             .checked_sub(
                 ctx.accounts
                     .claim_base
                     .stake_deposit_receipt
-                    .effective_stake,
+                    .effective_stake_u128(),
             )
             .unwrap();
-        stake_pool.total_weighted_stake = total_staked;
+        stake_pool.total_weighted_stake = u128(total_staked.to_le_bytes());
     }
     ctx.accounts.transfer_staked_tokens_to_owner()?;
     ctx.accounts.burn_stake_weight_tokens_from_owner()?;
