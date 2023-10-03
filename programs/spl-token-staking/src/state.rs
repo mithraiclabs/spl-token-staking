@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 use bytemuck::{Pod, Zeroable};
+use core::primitive;
 use jet_proc_macros::assert_size;
 
 use crate::{errors::ErrorCode, math::U192};
@@ -18,18 +19,31 @@ pub const MAX_REWARD_POOLS: usize = 10;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 
+#[allow(non_camel_case_types)]
+/// Definitely not your primitive u128...but Anchor thinks it is...
+#[derive(Copy, Clone, Default, Zeroable, AnchorDeserialize, AnchorSerialize, Pod, Debug)]
+#[repr(C)]
+pub struct u128(pub [u8; 16]);
+
+impl u128 {
+    /// Extracts the real u128 from the fake wrapper
+    pub fn as_u128(&self) -> primitive::u128 {
+        primitive::u128::from_le_bytes(self.0)
+    }
+}
+
 /// Get the number of digits to shift (aka precision loss) due to potential
 /// overflow of all tokens being staked for the max stake weight.
 pub fn get_digit_shift_by_max_scalar(max_weight: u64) -> u8 {
     let mut digit_shift = 0u32;
-    while u128::from(max_weight)
-        .checked_mul(u128::from(u64::MAX))
+    while primitive::u128::from(max_weight)
+        .checked_mul(primitive::u128::from(u64::MAX))
         .unwrap()
-        .checked_div(u128::from(SCALE_FACTOR_BASE))
+        .checked_div(primitive::u128::from(SCALE_FACTOR_BASE))
         .unwrap()
-        .checked_div(u128::pow(10, digit_shift))
+        .checked_div(primitive::u128::pow(10, digit_shift))
         .unwrap()
-        .gt(&u128::from(u64::MAX))
+        .gt(&primitive::u128::from(u64::MAX))
     {
         digit_shift += 1;
     }
@@ -61,6 +75,11 @@ impl RewardPool {
         let mut res = Self::default();
         res.reward_vault = *reward_vault;
         res
+    }
+
+    /// Extract the underlying u128 value of `rewards_per_effective_stake`
+    pub fn rewards_per_effective_stake_u128(&self) -> primitive::u128 {
+        self.rewards_per_effective_stake.as_u128()
     }
 }
 
@@ -108,14 +127,18 @@ pub struct StakePool {
 impl StakePool {
     pub const LEN: usize = std::mem::size_of::<StakePool>();
 
+    /// Extract the underlying u128 value of `total_weighted_stake`
+    pub fn total_weighted_stake_u128(&self) -> primitive::u128 {
+        self.total_weighted_stake.as_u128()
+    }
+
     pub fn get_claimed_amounts_of_reward_pools(&self) -> [u128; MAX_REWARD_POOLS] {
-        let mut ret = [0u128; MAX_REWARD_POOLS];
+        let mut ret = [u128::default(); MAX_REWARD_POOLS];
         for (index, reward_pool) in self.reward_pools.iter().enumerate() {
             ret[index] = reward_pool.rewards_per_effective_stake;
         }
         ret
     }
-    
 
     /// Update amount of reward each effective stake should receive based on current deposits.
     /// Iterates over reward pools:
@@ -130,7 +153,7 @@ impl StakePool {
         remaining_accounts: &[AccountInfo<'info>],
         reward_vault_account_offset: usize,
     ) -> Result<()> {
-        let total_weighted_stake = self.total_weighted_stake;
+        let total_weighted_stake = self.total_weighted_stake_u128();
         if total_weighted_stake == 0 {
             // do nothing if total stake is 0. This will allow the first
             // depositor to collect all of the rewards accumulated thus far.
@@ -170,7 +193,7 @@ impl StakePool {
                 continue;
             }
 
-            let balance_diff = u128::from(
+            let balance_diff = primitive::u128::from(
                 token_account
                     .amount
                     .checked_sub(reward_pool.last_amount)
@@ -181,9 +204,9 @@ impl StakePool {
             //  avoids precision loss in the later division.
             // Note: No possbilitiy of overflow because SCALE_FACTOR_BASE <= 10^10
             let scaled_balance_diff = balance_diff
-                .checked_mul(u128::from(SCALE_FACTOR_BASE))
+                .checked_mul(primitive::u128::from(SCALE_FACTOR_BASE))
                 .unwrap()
-                .checked_mul(u128::from(SCALE_FACTOR_BASE))
+                .checked_mul(primitive::u128::from(SCALE_FACTOR_BASE))
                 .unwrap();
 
             let additional_rewards_per_effective_stake = scaled_balance_diff
@@ -192,11 +215,11 @@ impl StakePool {
 
             reward_pool.last_amount = token_account.amount;
             let rewards_updated = reward_pool
-                .rewards_per_effective_stake
+                .rewards_per_effective_stake_u128()
                 .checked_add(additional_rewards_per_effective_stake)
                 .unwrap();
 
-            reward_pool.rewards_per_effective_stake = rewards_updated;
+            reward_pool.rewards_per_effective_stake = u128(rewards_updated.to_le_bytes());
         }
         Ok(())
     }
@@ -243,16 +266,30 @@ pub struct StakeDepositReceipt {
 impl StakeDepositReceipt {
     pub const LEN: usize = std::mem::size_of::<StakeDepositReceipt>();
 
+    pub fn effective_stake_u128(&self) -> primitive::u128 {
+        self.effective_stake.as_u128()
+    }
+
+    pub fn claimed_amounts_u128(&self) -> [primitive::u128; MAX_REWARD_POOLS] {
+        let mut claimed: [primitive::u128; MAX_REWARD_POOLS] = Default::default();
+        for (index, value) in self.claimed_amounts.iter().enumerate() {
+            claimed[index] = value.as_u128();
+        }
+        claimed
+    }
+
     /// Amount staked multiplied by weight
-    pub fn get_effective_stake_amount(weight: u64, amount: u64) -> u128 {
-        u128::from(amount).checked_mul(u128::from(weight)).unwrap()
+    pub fn get_effective_stake_amount(weight: u64, amount: u64) -> primitive::u128 {
+        primitive::u128::from(amount)
+            .checked_mul(primitive::u128::from(weight))
+            .unwrap()
     }
 
     /// Effective stake converted to u64 token amount
-    pub fn get_token_amount_from_stake(effective_stake: u128, max_weight: u64) -> u64 {
+    pub fn get_token_amount_from_stake(effective_stake: primitive::u128, max_weight: u64) -> u64 {
         let digit_shift = get_digit_shift_by_max_scalar(max_weight);
         effective_stake
-            .checked_div(u128::from(SCALE_FACTOR_BASE))
+            .checked_div(primitive::u128::from(SCALE_FACTOR_BASE))
             .unwrap()
             .checked_div(10u128.pow(digit_shift.into()))
             .unwrap()
