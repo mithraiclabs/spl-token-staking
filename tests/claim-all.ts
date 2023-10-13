@@ -9,6 +9,8 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
+  createBurnInstruction,
+  createMintToInstruction,
   createTransferInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
@@ -19,11 +21,13 @@ import {
   SplTokenStaking,
 } from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
+import { assertBNEqual } from "./genericTests";
+import { Transaction } from "@solana/web3.js";
 
 describe("claim-all", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
-  const tokenProgramInstance = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
+  const tokenProgram = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
   const depositor1 = new anchor.web3.Keypair();
   const depositor2 = new anchor.web3.Keypair();
   const stakePoolNonce = 4;
@@ -56,7 +60,7 @@ describe("claim-all", () => {
     stakeMint,
     depositor1.publicKey
   );
-  const depositerReward1AccountKey = getAssociatedTokenAddressSync(
+  const depositerReward1AccKey = getAssociatedTokenAddressSync(
     rewardMint1,
     depositor1.publicKey
   );
@@ -108,7 +112,7 @@ describe("claim-all", () => {
     const createDepositorReward1AccountIx =
       createAssociatedTokenAccountInstruction(
         program.provider.publicKey,
-        depositerReward1AccountKey,
+        depositerReward1AccKey,
         depositor1.publicKey,
         rewardMint1,
         TOKEN_PROGRAM_ID
@@ -139,17 +143,26 @@ describe("claim-all", () => {
           isSigner: false,
         },
         {
-          pubkey: depositerReward1AccountKey,
+          pubkey: depositerReward1AccKey,
           isWritable: true,
           isSigner: false,
         },
       ])
       .rpc({ skipPreflight: true });
 
-    const [depositerReward1Account] = await Promise.all([
-      tokenProgramInstance.account.account.fetch(depositerReward1AccountKey),
-    ]);
-    assert.equal(depositerReward1Account.amount.toNumber(), totalReward1);
+    const [depositerReward1Account, stakeReceipt, stakePool] =
+      await Promise.all([
+        tokenProgram.account.account.fetch(depositerReward1AccKey),
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+        program.account.stakePool.fetch(stakePoolKey),
+      ]);
+    assertBNEqual(depositerReward1Account.amount, totalReward1);
+    assertBNEqual(stakeReceipt.claimedAmounts[0], totalReward1);
+    assertBNEqual(stakePool.rewardPools[0].lastAmount, 0);
+    assertBNEqual(
+      stakePool.rewardPools[0].rewardsPerEffectiveStake,
+      totalReward1 // scale weight =1
+    );
   });
 
   it("Claim rewards split among multiple depositors", async () => {
@@ -217,11 +230,17 @@ describe("claim-all", () => {
         .add(createDepositor2Reward1AccountIx)
     );
 
-    const [depositerReward1AccountBefore, depositerReward1AccountBefore2] =
-      await Promise.all([
-        tokenProgramInstance.account.account.fetch(depositerReward1AccountKey),
-        tokenProgramInstance.account.account.fetch(depositerReward1AccountKey2),
-      ]);
+    const [
+      depositerReward1AccountBefore,
+      depositerReward1AccountBefore2,
+      stakeReceipt2Before,
+    ] = await Promise.all([
+      tokenProgram.account.account.fetch(depositerReward1AccKey),
+      tokenProgram.account.account.fetch(depositerReward1AccountKey2),
+      program.account.stakeDepositReceipt.fetch(stake2ReceiptKey),
+    ]);
+    // User 2 gets claim credit (but not funds) for the claims that occured before they deposited
+    assertBNEqual(stakeReceipt2Before.claimedAmounts[0], totalReward1);
 
     await Promise.all([
       program.methods
@@ -241,7 +260,7 @@ describe("claim-all", () => {
             isSigner: false,
           },
           {
-            pubkey: depositerReward1AccountKey,
+            pubkey: depositerReward1AccKey,
             isWritable: true,
             isSigner: false,
           },
@@ -272,23 +291,41 @@ describe("claim-all", () => {
         .rpc({ skipPreflight: true }),
     ]);
 
-    const [depositerReward1Account, depositerReward1Account2] =
-      await Promise.all([
-        tokenProgramInstance.account.account.fetch(depositerReward1AccountKey),
-        tokenProgramInstance.account.account.fetch(depositerReward1AccountKey2),
-      ]);
-    // user 1 should have had reward token account balance increase by half of the transferred rewards.
-    assert.equal(
-      depositerReward1Account.amount.toNumber(),
-      depositerReward1AccountBefore.amount
-        .add(new anchor.BN(totalReward1 / 2))
-        .toNumber()
+    const [
+      depositerReward1Account,
+      depositerReward1Account2,
+      stake1Receipt,
+      stake2Receipt,
+      stakePool,
+    ] = await Promise.all([
+      tokenProgram.account.account.fetch(depositerReward1AccKey),
+      tokenProgram.account.account.fetch(depositerReward1AccountKey2),
+      program.account.stakeDepositReceipt.fetch(stake1ReceiptKey),
+      program.account.stakeDepositReceipt.fetch(stake2ReceiptKey),
+      program.account.stakePool.fetch(stakePoolKey),
+    ]);
+    // user 1 should have had reward token account balance increase by half of the transferred
+    // rewards.
+    let reward1Expected = depositerReward1AccountBefore.amount.add(
+      new anchor.BN(totalReward1 / 2)
     );
-    assert.equal(
-      depositerReward1Account2.amount.toNumber(),
-      depositerReward1AccountBefore2.amount
-        .add(new anchor.BN(totalReward1 / 2))
-        .toNumber()
+    assertBNEqual(depositerReward1Account.amount, reward1Expected);
+    assertBNEqual(stake1Receipt.claimedAmounts[0], reward1Expected);
+
+    assertBNEqual(stakePool.rewardPools[0].lastAmount, 0);
+    assertBNEqual(
+      stakePool.rewardPools[0].rewardsPerEffectiveStake,
+      reward1Expected
+    );
+
+    // User 2 gains the same, but they already got claim credit for the rewards they missed
+    let reward2Expected = depositerReward1AccountBefore2.amount.add(
+      new anchor.BN(totalReward1 / 2)
+    );
+    assertBNEqual(depositerReward1Account2.amount, reward2Expected);
+    assertBNEqual(
+      stake2Receipt.claimedAmounts[0],
+      totalReward1 + totalReward1 / 2
     );
   });
 
@@ -307,9 +344,7 @@ describe("claim-all", () => {
     const [stake1ReceiptKey] = getStakeReceiptKey(depositor1.publicKey);
 
     const depositerReward1AccountBefore =
-      await tokenProgramInstance.account.account.fetch(
-        depositerReward1AccountKey
-      );
+      await tokenProgram.account.account.fetch(depositerReward1AccKey);
 
     await program.methods
       .claimAll()
@@ -328,21 +363,25 @@ describe("claim-all", () => {
           isSigner: false,
         },
         {
-          pubkey: depositerReward1AccountKey,
+          pubkey: depositerReward1AccKey,
           isWritable: true,
           isSigner: false,
         },
       ])
       .rpc({ skipPreflight: true });
 
-    const depositerReward1Account =
-      await tokenProgramInstance.account.account.fetch(
-        depositerReward1AccountKey
-      );
+    const [depositerReward1Account, stake1Receipt] = await Promise.all([
+      tokenProgram.account.account.fetch(depositerReward1AccKey),
+      program.account.stakeDepositReceipt.fetch(stake1ReceiptKey),
+    ]);
     // user 1 should have the same amount when claiming after already claimed (from prev. tests)
-    assert.equal(
-      depositerReward1Account.amount.toNumber(),
-      depositerReward1AccountBefore.amount.toNumber()
+    assertBNEqual(
+      depositerReward1Account.amount,
+      depositerReward1AccountBefore.amount
+    );
+    assertBNEqual(
+      stake1Receipt.claimedAmounts[0],
+      depositerReward1Account.amount
     );
   });
 
@@ -409,8 +448,8 @@ describe("claim-all", () => {
 
     const [depositerReward1AccountBefore, depositerReward2AccountBefore] =
       await Promise.all([
-        tokenProgramInstance.account.account.fetch(depositerReward1AccountKey),
-        tokenProgramInstance.account.account.fetch(depositerReward2AccountKey),
+        tokenProgram.account.account.fetch(depositerReward1AccKey),
+        tokenProgram.account.account.fetch(depositerReward2AccountKey),
       ]);
 
     // NOTE: we must pass an array of RewardPoolVault and user token accounts
@@ -433,7 +472,7 @@ describe("claim-all", () => {
           isSigner: false,
         },
         {
-          pubkey: depositerReward1AccountKey,
+          pubkey: depositerReward1AccKey,
           isWritable: true,
           isSigner: false,
         },
@@ -453,8 +492,8 @@ describe("claim-all", () => {
 
     const [depositerReward1Account, depositerReward2Account] =
       await Promise.all([
-        tokenProgramInstance.account.account.fetch(depositerReward1AccountKey),
-        tokenProgramInstance.account.account.fetch(depositerReward2AccountKey),
+        tokenProgram.account.account.fetch(depositerReward1AccKey),
+        tokenProgram.account.account.fetch(depositerReward2AccountKey),
       ]);
     // NOTE: must divide rewards by 2 because of previous test and depositor2
     assert.equal(
@@ -469,5 +508,140 @@ describe("claim-all", () => {
         .add(new anchor.BN(totalReward2 / 2))
         .toNumber()
     );
+  });
+
+  // Note: Eventually, the u128 will overflow and fail at checked_add, but this is unlikely to occur
+  // in practice, since it would many multiples of u64::max distributions.
+  it("Big reward doesn't overflow", async () => {
+    const receiptNonce = 0;
+    const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        depositor1.publicKey.toBuffer(),
+        stakePoolKey.toBuffer(),
+        new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
+        Buffer.from("stakeDepositReceipt", "utf-8"),
+      ],
+      program.programId
+    );
+    const [reward2VaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        stakePoolKey.toBuffer(),
+        rewardMint2.toBuffer(),
+        Buffer.from("rewardVault", "utf-8"),
+      ],
+      program.programId
+    );
+    const depositerReward2AccountKey = getAssociatedTokenAddressSync(
+      rewardMint2,
+      depositor1.publicKey
+    );
+
+    // about half of u64 max (18_446_744_073_709_551_614)
+    const totalRewardBN = new anchor.BN("9446744073709551614");
+    const totalReward1 = BigInt("9446744073709551614");
+
+    for (let i = 0; i < 10; i++) {
+      const [rewardVault] = await Promise.all([
+        tokenProgram.account.account.fetch(rewardVaultKey),
+      ]);
+      let toFund = BigInt(totalRewardBN.sub(rewardVault.amount).toString());
+
+      const fundIx = createMintToInstruction(
+        rewardMint1,
+        rewardVaultKey,
+        program.provider.publicKey,
+        toFund
+      );
+
+      // mint reward tokens
+      try {
+        await program.provider.sendAndConfirm(
+          new anchor.web3.Transaction().add(fundIx)
+        );
+      } catch (err) {
+        console.log(err);
+        // This can fail, we don't care...
+      }
+
+      const [stake1ReceiptBefore] = await Promise.all([
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+      ]);
+
+      await program.provider.sendAndConfirm(
+        new Transaction().add(
+          await program.methods
+            .claimAll()
+            .accounts({
+              claimBase: {
+                owner: depositor1.publicKey,
+                stakePool: stakePoolKey,
+                stakeDepositReceipt: stakeReceiptKey,
+              },
+            })
+            .signers([depositor1])
+            .remainingAccounts([
+              {
+                pubkey: rewardVaultKey,
+                isWritable: true,
+                isSigner: false,
+              },
+              {
+                pubkey: depositerReward1AccKey,
+                isWritable: true,
+                isSigner: false,
+              },
+              {
+                pubkey: reward2VaultKey,
+                isWritable: true,
+                isSigner: false,
+              },
+              {
+                pubkey: depositerReward2AccountKey,
+                isWritable: true,
+                isSigner: false,
+              },
+            ])
+            .instruction()
+        ),
+        [depositor1]
+      );
+
+      const [depositerReward1Acc] = await Promise.all([
+        tokenProgram.account.account.fetch(depositerReward1AccKey),
+      ]);
+
+      // Burn the rewards so the token account itself doesn't overflow
+      try {
+        await program.provider.sendAndConfirm(
+          new Transaction().add(
+            createBurnInstruction(
+              depositerReward1AccKey,
+              rewardMint1,
+              depositor1.publicKey,
+              BigInt(depositerReward1Acc.amount.toString())
+            )
+          ),
+          [depositor1]
+        );
+      } catch (err) {
+        //this can fail, we don't care
+      }
+
+      const [stake1Receipt] = await Promise.all([
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+      ]);
+      console.log(
+        "claimed before: " +
+          stake1ReceiptBefore.claimedAmounts[0].toString() +
+          " after " +
+          stake1Receipt.claimedAmounts[0].toString() +
+          " diff " +
+          stake1Receipt.claimedAmounts[0]
+            .sub(stake1ReceiptBefore.claimedAmounts[0])
+            .toString()
+      );
+    }
+
+    //assertBNEqual(stake1Receipt.claimedAmounts[0], totalReward1);
   });
 });

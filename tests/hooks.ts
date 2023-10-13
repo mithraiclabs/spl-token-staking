@@ -105,7 +105,7 @@ export const mochaHooks = {
           rewardMint1,
           reward1TokenAccount,
           program.provider.publicKey,
-          100_000_000_000
+          9_000_000_000_000_000
         )
       );
       const reward2TokenAccount = getAssociatedTokenAddressSync(
@@ -126,7 +126,7 @@ export const mochaHooks = {
           rewardMint2,
           reward2TokenAccount,
           program.provider.publicKey,
-          100_000_000_000
+          9_000_000_000_000_000
         )
       );
       await program.provider.sendAndConfirm(tx, [

@@ -246,7 +246,7 @@ export const _SplTokenStakingIDL = {
               name: "owner",
               isMut: true,
               isSigner: true,
-              docs: ["Payer and owner of the StakeDepositReceipt"],
+              docs: ["Owner of the StakeDepositReceipt"],
             },
             {
               name: "stakePool",
@@ -300,7 +300,7 @@ export const _SplTokenStakingIDL = {
               name: "owner",
               isMut: true,
               isSigner: true,
-              docs: ["Payer and owner of the StakeDepositReceipt"],
+              docs: ["Owner of the StakeDepositReceipt"],
             },
             {
               name: "stakePool",

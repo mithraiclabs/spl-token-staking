@@ -583,5 +583,4 @@ describe("deposit", () => {
   });
 
   // TODO total_weighted_stake overflow testing
-  // TODO
 });

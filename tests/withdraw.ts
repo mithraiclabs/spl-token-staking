@@ -13,11 +13,9 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import {
-  addRewardPool,
-  initStakePool,
-} from "@mithraic-labs/token-staking";
+import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
+import { assertBNEqual } from "./genericTests";
 
 describe("withdraw", () => {
   const program = anchor.workspace
@@ -151,20 +149,17 @@ describe("withdraw", () => {
       tokenProgramInstance.account.mint.fetch(stakeMint),
       program.provider.connection.getAccountInfo(stakeReceiptKey),
     ]);
-    assert.equal(
-      stakePoolBefore.totalWeightedStake.toString(),
-      stakePoolAfter.totalWeightedStake.toString()
+    assertBNEqual(
+      stakePoolBefore.totalWeightedStake,
+      stakePoolAfter.totalWeightedStake
     );
-    assert.equal(
-      depositerMintAccount.amount.toString(),
-      depositerMintAccountBefore.amount.toString()
+    assertBNEqual(
+      depositerMintAccount.amount,
+      depositerMintAccountBefore.amount
     );
-    assert.equal(
-      sTokenAccountAfter.amount.toString(),
-      sTokenAccountBefore.amount.toString()
-    );
-    assert.equal(vaultAfter.amount.toString(), "0");
-    assert.equal(stakeMintAfter.supply.toString(), "0");
+    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount);
+    assertBNEqual(vaultAfter.amount, 0);
+    assertBNEqual(stakeMintAfter.supply, 0);
     assert.isNull(
       stakeDepositReceipt,
       "StakeDepositReceipt account not closed"
@@ -268,24 +263,18 @@ describe("withdraw", () => {
       tokenProgramInstance.account.mint.fetch(stakeMint),
       tokenProgramInstance.account.account.fetch(depositorReward1AccountKey),
     ]);
-    assert.equal(
-      stakePoolBefore.totalWeightedStake.toString(),
-      stakePoolAfter.totalWeightedStake.toString()
+    assertBNEqual(
+      stakePoolBefore.totalWeightedStake,
+      stakePoolAfter.totalWeightedStake
     );
-    assert.equal(
-      depositerMintAccount.amount.toString(),
-      depositerMintAccountBefore.amount.toString()
+    assertBNEqual(
+      depositerMintAccount.amount,
+      depositerMintAccountBefore.amount
     );
-    assert.equal(
-      sTokenAccountAfter.amount.toString(),
-      sTokenAccountBefore.amount.toString()
-    );
-    assert.equal(vaultAfter.amount.toString(), "0");
-    assert.equal(stakeMintAfter.supply.toString(), "0");
-    assert.equal(
-      depositorReward1AccountAfter.amount.toString(),
-      new anchor.BN(totalReward1).toString()
-    );
+    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount);
+    assertBNEqual(vaultAfter.amount, 0);
+    assertBNEqual(stakeMintAfter.supply, 0);
+    assertBNEqual(depositorReward1AccountAfter.amount, totalReward1);
   });
 
   it("Fail to withdraw locked tokens", async () => {
@@ -346,6 +335,6 @@ describe("withdraw", () => {
       assert.equal(err.error.errorCode.code, "StakeStillLocked");
       return;
     }
-    assert.isTrue(false, "TX should have faile");
+    assert.isTrue(false, "TX should have failed");
   });
 });
