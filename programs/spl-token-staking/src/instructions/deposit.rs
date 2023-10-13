@@ -61,26 +61,27 @@ pub struct Deposit<'info> {
 impl<'info> Deposit<'info> {
     /// Transfer the stake_mint from the owners's address to the StakePool vault.
     pub fn transfer_from_user_to_stake_vault(&self, amount: u64) -> Result<()> {
-        let cpi_accounts = Transfer {
-            from: self.from.to_account_info(),
-            to: self.vault.to_account_info(),
-            authority: self.owner.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(
+            self.token_program.to_account_info(),
+            Transfer {
+                from: self.from.to_account_info(),
+                to: self.vault.to_account_info(),
+                authority: self.owner.to_account_info(),
+            },
+        );
         token::transfer(cpi_ctx, amount)
     }
 
     pub fn mint_staked_token_to_user(&self, effective_amount: u64) -> Result<()> {
         let stake_pool = self.stake_pool.load()?;
-        let cpi_accounts = MintTo {
-            mint: self.stake_mint.to_account_info(),
-            to: self.destination.to_account_info(),
-            authority: self.stake_pool.to_account_info(),
-        };
         let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
         let cpi_ctx = CpiContext::new_with_signer(
             self.token_program.to_account_info(),
-            cpi_accounts,
+            MintTo {
+                mint: self.stake_mint.to_account_info(),
+                to: self.destination.to_account_info(),
+                authority: self.stake_pool.to_account_info(),
+            },
             signer_seeds,
         );
 
@@ -102,7 +103,7 @@ pub fn handler<'info>(
             return err!(ErrorCode::DurationTooShort);
         }
         // clamp lockup duration to the max
-        let lockup_duration=  u64::min(lockup_duration, stake_pool.max_duration);
+        let lockup_duration = u64::min(lockup_duration, stake_pool.max_duration);
         let stake_deposit_receipt = &mut ctx.accounts.stake_deposit_receipt;
 
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 1usize)?;

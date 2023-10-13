@@ -16,3 +16,5 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts -r tests/h
 # test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initialize-stake-pool.ts -r tests/hooks.ts"
 # test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/add-reward-pool.ts -r tests/hooks.ts"
 # test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/deposit.ts -r tests/hooks.ts"
+# test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/claim-all.ts -r tests/hooks.ts"
+# test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/withdraw.ts -r tests/hooks.ts"

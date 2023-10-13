@@ -17,6 +17,7 @@ use crate::{errors::ErrorCode, math::U192};
 ///  * (256 accounts per LUT - 8) / 2 = 124 reward pool max from account limits
 pub const MAX_REWARD_POOLS: usize = 10;
 pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
+pub const SCALE_FACTOR_BASE_SQUARED: u64 = 1_000_000_000_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 
 #[allow(non_camel_case_types)]
@@ -167,8 +168,11 @@ impl StakePool {
                 continue;
             }
 
-            if remaining_accounts_index > remaining_accounts.len() {
-                msg!("Missing at least one reward vault account");
+            if remaining_accounts_index >= remaining_accounts.len() {
+                msg!(
+                    "Missing at least one reward vault account. Failed at index {:?}",
+                    remaining_accounts_index
+                );
                 return err!(ErrorCode::InvalidRewardPoolVaultIndex);
             }
             let account_info = &remaining_accounts[remaining_accounts_index];
@@ -199,14 +203,13 @@ impl StakePool {
                     .checked_sub(reward_pool.last_amount)
                     .unwrap(),
             );
+
             // Scaled balance diff is scaled by SCALE_FACTOR_BASE squared because
             //  total_weighted_stake is shifted by SCALE_FACTOR_BASE and this
             //  avoids precision loss in the later division.
-            // Note: No possbilitiy of overflow because SCALE_FACTOR_BASE <= 10^10
+            // Note: Cannot overflow because (u64::MAX * 10 ^ 18) < 2^128
             let scaled_balance_diff = balance_diff
-                .checked_mul(primitive::u128::from(SCALE_FACTOR_BASE))
-                .unwrap()
-                .checked_mul(primitive::u128::from(SCALE_FACTOR_BASE))
+                .checked_mul(primitive::u128::from(SCALE_FACTOR_BASE_SQUARED))
                 .unwrap();
 
             let additional_rewards_per_effective_stake = scaled_balance_diff

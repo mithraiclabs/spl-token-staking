@@ -48,15 +48,14 @@ impl<'info> Withdraw<'info> {
     /// Transfer the owner's previously staked tokens back.
     pub fn transfer_staked_tokens_to_owner(&self) -> Result<()> {
         let stake_pool = self.claim_base.stake_pool.load()?;
-        let cpi_accounts = Transfer {
-            from: self.vault.to_account_info(),
-            to: self.destination.to_account_info(),
-            authority: self.claim_base.stake_pool.to_account_info(),
-        };
         let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
         let cpi_ctx = CpiContext::new_with_signer(
             self.claim_base.token_program.to_account_info(),
-            cpi_accounts,
+            Transfer {
+                from: self.vault.to_account_info(),
+                to: self.destination.to_account_info(),
+                authority: self.claim_base.stake_pool.to_account_info(),
+            },
             signer_seeds,
         );
         token::transfer(
@@ -67,14 +66,13 @@ impl<'info> Withdraw<'info> {
 
     pub fn burn_stake_weight_tokens_from_owner(&self) -> Result<()> {
         let stake_pool = self.claim_base.stake_pool.load()?;
-        let cpi_accounts = Burn {
-            mint: self.stake_mint.to_account_info(),
-            from: self.from.to_account_info(),
-            authority: self.claim_base.owner.to_account_info(),
-        };
         let cpi_ctx = CpiContext::new(
             self.claim_base.token_program.to_account_info(),
-            cpi_accounts,
+            Burn {
+                mint: self.stake_mint.to_account_info(),
+                from: self.from.to_account_info(),
+                authority: self.claim_base.owner.to_account_info(),
+            },
         );
         let effective_stake_token_amount = StakeDepositReceipt::get_token_amount_from_stake(
             self.claim_base.stake_deposit_receipt.effective_stake_u128(),

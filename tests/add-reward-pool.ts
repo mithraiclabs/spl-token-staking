@@ -59,9 +59,7 @@ describe("add-reward-pool", () => {
     );
     assertBNEqual(stakePool.rewardPools[rewardPoolIndex].lastAmount, 0);
     assertBNEqual(
-      new anchor.BN(
-        stakePool.rewardPools[rewardPoolIndex].rewardsPerEffectiveStake
-      ),
+      stakePool.rewardPools[rewardPoolIndex].rewardsPerEffectiveStake,
       0
     );
   });

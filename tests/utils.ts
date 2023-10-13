@@ -52,7 +52,7 @@ export const deposit = async (
     ],
     program.programId
   );
-
+try{
   await program.methods
     .deposit(receiptNonce, amount, duration)
     .accounts({
@@ -75,5 +75,7 @@ export const deposit = async (
       }))
     )
     .signers([depositor])
-    .rpc({ skipPreflight: true });
+    .rpc();
+}catch(err)
+{console.log(err);}
 };

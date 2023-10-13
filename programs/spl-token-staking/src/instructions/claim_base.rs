@@ -4,12 +4,12 @@ use anchor_spl::token::{self, Token, Transfer};
 use crate::errors::ErrorCode;
 use crate::math::U256;
 use crate::stake_pool_signer_seeds;
-use crate::state::{StakeDepositReceipt, StakePool, MAX_REWARD_POOLS, SCALE_FACTOR_BASE};
+use crate::state::{StakeDepositReceipt, StakePool, MAX_REWARD_POOLS, SCALE_FACTOR_BASE_SQUARED};
 
 #[derive(Accounts)]
 pub struct ClaimBase<'info> {
-    /// Payer and owner of the StakeDepositReceipt
-    #[account(mut)]
+    /// Owner of the StakeDepositReceipt
+    #[account(mut)] // Must be mut for withdraw, unaffected for claim
     pub owner: Signer<'info>,
 
     // StakePool the StakeDepositReceipt belongs to
@@ -36,17 +36,16 @@ impl<'info> ClaimBase<'info> {
         amount: u64,
     ) -> Result<()> {
         let stake_pool = self.stake_pool.load()?;
-        let cpi_accounts = Transfer {
-            from: reward_vault_info,
-            to: owner_reward_account_info,
-            authority: self.stake_pool.to_account_info(),
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: Transfer {
+                from: reward_vault_info,
+                to: owner_reward_account_info,
+                authority: self.stake_pool.to_account_info(),
+            },
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[stake_pool_signer_seeds!(stake_pool)],
         };
-        let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
-        let cpi_ctx = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            cpi_accounts,
-            signer_seeds,
-        );
         token::transfer(cpi_ctx, amount)
     }
 
@@ -66,22 +65,28 @@ impl<'info> ClaimBase<'info> {
             // indexes for the relevant remaining accounts
             let reward_vault_account_index = remaining_accounts_index * 2;
             let owner_account_index = reward_vault_account_index + 1;
+            let len = remaining_accounts.len();
+            if reward_vault_account_index >= len || owner_account_index >= len {
+                msg!(
+                    "Missing at least one reward vault account or owner account. Failed at index {:?}",
+                    remaining_accounts_index
+                );
+                return err!(ErrorCode::InvalidRewardPoolVaultIndex);
+            }
 
             let claimable_per_effective_stake = reward_pool
                 .rewards_per_effective_stake_u128()
                 .checked_sub(self.stake_deposit_receipt.claimed_amounts[index].as_u128())
                 .unwrap();
+            // Note: Cannot overflow, 2^128 * 2^128 < 2^256
             let total_claimable = U256::from(claimable_per_effective_stake)
                 .checked_mul(U256::from(
                     self.stake_deposit_receipt.effective_stake_u128(),
                 ))
                 .unwrap()
-                .checked_div(U256::from(SCALE_FACTOR_BASE))
-                .unwrap()
-                .checked_div(U256::from(SCALE_FACTOR_BASE))
+                .checked_div(U256::from(SCALE_FACTOR_BASE_SQUARED))
                 .unwrap()
                 .as_u64();
-
             if total_claimable == 0 {
                 continue;
             }
