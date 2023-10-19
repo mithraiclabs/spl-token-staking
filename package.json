@@ -4,8 +4,8 @@
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
     },
     "dependencies": {
-        "@coral-xyz/anchor": "^0.28.1-beta.2",
-        "@coral-xyz/spl-token": "^0.28.1-beta.2",
+        "@coral-xyz/anchor": "^0.28.0",
+        "@coral-xyz/spl-token": "^0.28.0",
         "@mithraic-labs/token-staking": "link:./packages/token-staking",
         "@solana/spl-token": "^0.3.8"
     },
