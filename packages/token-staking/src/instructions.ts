@@ -100,6 +100,95 @@ export const addRewardPool = async (
     .rpc();
 };
 
+export const createStakeBuilder = (
+  program: anchor.Program<SplTokenStaking>,
+  stakePoolKey: anchor.Address,
+  from: anchor.Address,
+  stakeMintAccount: anchor.Address,
+  amount: anchor.BN,
+  duration: anchor.BN,
+  receiptNonce: number,
+  rewardVaults: anchor.web3.PublicKey[] = []
+) => {
+  const pubkey = program.provider.publicKey ?? anchor.web3.PublicKey.default;
+  const _stakePoolKey =
+    typeof stakePoolKey === "string"
+      ? new anchor.web3.PublicKey(stakePoolKey)
+      : stakePoolKey;
+  const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [_stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
+    program.programId
+  );
+  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
+    [_stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
+    program.programId
+  );
+  const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      pubkey.toBuffer(),
+      _stakePoolKey.toBuffer(),
+      new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
+      Buffer.from("stakeDepositReceipt", "utf-8"),
+    ],
+    program.programId
+  );
+
+  return program.methods
+    .deposit(receiptNonce, amount, duration)
+    .accounts({
+      owner: program.provider.publicKey,
+      from,
+      stakePool: stakePoolKey,
+      vault: vaultKey,
+      stakeMint,
+      destination: stakeMintAccount,
+      stakeDepositReceipt: stakeReceiptKey,
+      tokenProgram: SPL_TOKEN_PROGRAM_ID,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .remainingAccounts(
+      rewardVaults.map((rewardVaultKey) => ({
+        pubkey: rewardVaultKey,
+        isWritable: false,
+        isSigner: false,
+      }))
+    );
+};
+/**
+ * Generate the instruction to Deposit (aka Stake).
+ * @param program
+ * @param stakePoolKey
+ * @param from
+ * @param stakeMintAccount
+ * @param amount
+ * @param duration
+ * @param receiptNonce
+ * @param rewardVaults
+ * @returns
+ */
+export const createStakeInstruction = async (
+  program: anchor.Program<SplTokenStaking>,
+  stakePoolkey: anchor.Address,
+  from: anchor.Address,
+  stakeMintAccount: anchor.Address,
+  amount: anchor.BN,
+  duration: anchor.BN,
+  receiptNonce: number,
+  rewardVaults: anchor.web3.PublicKey[] = []
+) => {
+  return createStakeBuilder(
+    program,
+    stakePoolkey,
+    from,
+    stakeMintAccount,
+    amount,
+    duration,
+    receiptNonce,
+    rewardVaults
+  ).instruction();
+};
+
 /**
  * Stake with an existing StakePool.
  * @param program
@@ -140,45 +229,16 @@ export const deposit = async (
     ],
     program.programId
   );
-  const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-    program.programId
-  );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
-  const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      program.provider.publicKey.toBuffer(),
-      stakePoolKey.toBuffer(),
-      new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
-      Buffer.from("stakeDepositReceipt", "utf-8"),
-    ],
-    program.programId
-  );
-
-  return program.methods
-    .deposit(receiptNonce, amount, duration)
-    .accounts({
-      owner: program.provider.publicKey,
-      from,
-      stakePool: stakePoolKey,
-      vault: vaultKey,
-      stakeMint,
-      destination: stakeMintAccount,
-      stakeDepositReceipt: stakeReceiptKey,
-      tokenProgram: SPL_TOKEN_PROGRAM_ID,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    })
-    .remainingAccounts(
-      rewardVaults.map((rewardVaultKey) => ({
-        pubkey: rewardVaultKey,
-        isWritable: false,
-        isSigner: false,
-      }))
-    )
+  return createStakeBuilder(
+    program,
+    stakePoolKey,
+    from,
+    stakeMintAccount,
+    amount,
+    duration,
+    receiptNonce,
+    rewardVaults
+  )
     .preInstructions(options.preInstructions)
     .postInstructions(options.postInstructions)
     .rpc({ skipPreflight: true });

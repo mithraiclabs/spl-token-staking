@@ -231,6 +231,9 @@ impl StakePool {
     pub fn get_stake_weight(&self, duration: u64) -> u64 {
         // TODO handle/test base_weight != 1
         let duration_span = self.max_duration.checked_sub(self.min_duration).unwrap();
+        if duration_span == 0 {
+            return self.base_weight;
+        }
         let duration_exceeding_min = duration.checked_sub(self.min_duration).unwrap();
         let calculated_weight = U192::from(duration_exceeding_min)
             // must scale to account for decimals
