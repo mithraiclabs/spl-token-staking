@@ -100,6 +100,18 @@ export const addRewardPool = async (
     .rpc();
 };
 
+/**
+ * Returns the Anchor method builder for the Stake (aka Deposit) instruction.
+ * @param program 
+ * @param stakePoolKey 
+ * @param from 
+ * @param stakeMintAccount 
+ * @param amount 
+ * @param duration 
+ * @param receiptNonce 
+ * @param rewardVaults 
+ * @returns 
+ */
 export const createStakeBuilder = (
   program: anchor.Program<SplTokenStaking>,
   stakePoolKey: anchor.Address,
