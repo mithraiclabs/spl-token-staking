@@ -193,6 +193,9 @@ export const calculateStakeWeight = (
   duration: anchor.BN
 ) => {
   const durationSpan = maxDuration.sub(minDuration);
+  if (durationSpan.eq(new anchor.BN(0))) {
+    return baseWeight;
+  }
   const durationExceedingMin = duration.sub(minDuration);
   return anchor.BN.max(
     durationExceedingMin
