@@ -8,7 +8,7 @@ const main = () => {
       ).toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
-    new anchor.web3.PublicKey("H1vqoH6vhwQ4WmFYa4rWC6rnVGNwPJMdiWNNqZDQBcNc")
+    new anchor.web3.PublicKey("STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB")
   );
 
   // 2cJi8MAL7BpFJ2VqcFyo7LP3DbaDxG7SRiJMqrLG5vUA

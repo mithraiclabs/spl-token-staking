@@ -8,7 +8,7 @@ pub mod state;
 
 use crate::instructions::*;
 
-declare_id!("H1vqoH6vhwQ4WmFYa4rWC6rnVGNwPJMdiWNNqZDQBcNc");
+declare_id!("STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB");
 
 #[program]
 pub mod spl_token_staking {
