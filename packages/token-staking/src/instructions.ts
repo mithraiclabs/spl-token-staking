@@ -206,6 +206,7 @@ export const createStakeInstruction = async (
  * @param program
  * @param stakePoolNonce
  * @param stakePoolMint
+ * @param stakePoolAuthority
  * @param from
  * @param stakeMintAccount
  * @param amount
@@ -218,6 +219,7 @@ export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   stakePoolNonce: number,
   stakePoolMint: anchor.Address,
+  stakePoolAuthority: anchor.Address,
   from: anchor.Address,
   stakeMintAccount: anchor.Address,
   amount: anchor.BN,
@@ -236,7 +238,7 @@ export const deposit = async (
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
       new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
-      program.provider.publicKey.toBuffer(),
+      new anchor.web3.PublicKey(stakePoolAuthority).toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
     program.programId
