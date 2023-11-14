@@ -235,15 +235,27 @@ impl StakePool {
             return self.base_weight;
         }
         let duration_exceeding_min = duration.checked_sub(self.min_duration).unwrap();
-        let calculated_weight = U192::from(duration_exceeding_min)
+        //weight = BaseWeight + (NormalizedWeight * (MaxWeight - BaseWeight)
+
+        // The multiplier on a scale of 0 - 1 (aka SCALE_FACTOR_BASE), based on where the duration falls
+        // on the line of min - max duration.
+        let normalized_weight = U192::from(duration_exceeding_min)
             // must scale to account for decimals
             .checked_mul(U192::from(SCALE_FACTOR_BASE))
             .unwrap()
-            .checked_mul(U192::from(self.max_weight))
-            .unwrap()
             .checked_div(U192::from(duration_span))
-            .unwrap()
-            .checked_div(U192::from(SCALE_FACTOR_BASE))
+            .unwrap();
+        let weight_diff = U192::from(self.max_weight)
+            .checked_sub(U192::from(self.base_weight))
+            .unwrap();
+        let calculated_weight = U192::from(self.base_weight)
+            .checked_add(
+                normalized_weight
+                    .checked_mul(weight_diff)
+                    .unwrap()
+                    .checked_div(U192::from(SCALE_FACTOR_BASE))
+                    .unwrap(),
+            )
             .unwrap();
 
         u64::max(calculated_weight.as_u64(), self.base_weight)
