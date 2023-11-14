@@ -14,8 +14,10 @@ import {
 } from "@solana/spl-token";
 import {
   SCALE_FACTOR_BASE,
+  SCALE_FACTOR_BASE_BN,
   SplTokenStaking,
   addRewardPool,
+  calculateStakeWeight,
   getDigitShift,
   getNextUnusedStakeReceiptNonce,
   initStakePool,
@@ -158,11 +160,7 @@ describe("deposit", () => {
     assertKeysEqual(stakeReceipt.owner, depositor.publicKey);
     assertBNEqual(stakeReceipt.depositAmount, deposit1Amount);
     stakeReceipt.claimedAmounts.forEach((claimed, index) => {
-      assert.equal(
-        claimed.toString(),
-        "0",
-        `claimed index ${index} failed`
-      );
+      assert.equal(claimed.toString(), "0", `claimed index ${index} failed`);
     });
     assertBNEqual(stakeReceipt.lockupDuration, minDuration);
     // May be off by 1-2 seconds
@@ -253,11 +251,7 @@ describe("deposit", () => {
           "incorrect rewards per effective stake"
         );
       } else {
-        assert.equal(
-          claimed.toString(),
-          "0",
-          `claimed index ${index} failed`
-        );
+        assert.equal(claimed.toString(), "0", `claimed index ${index} failed`);
       }
     });
     let now = Date.now() / 1000;
@@ -341,8 +335,10 @@ describe("deposit", () => {
       )
     );
 
+    const duration2 = maxDuration.div(new anchor.BN(2));
+
     await program.methods
-      .deposit(receiptNonce2, deposit2Amount, maxDuration.div(new anchor.BN(2)))
+      .deposit(receiptNonce2, deposit2Amount, duration2)
       .accounts({
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
@@ -368,12 +364,13 @@ describe("deposit", () => {
       program.account.stakeDepositReceipt.fetch(stakeReceiptKey2),
       tokenProgram.account.account.fetch(stakeMintAccountKey),
     ]);
-    const receipt2WeightRatio = maxDuration
-      .div(new anchor.BN(2))
-      .sub(minDuration)
-      .mul(scaleFactorBN)
-      .div(durationDiff);
-    const weight = maxWeight.mul(receipt2WeightRatio).div(scaleFactorBN);
+    const weight = calculateStakeWeight(
+      minDuration,
+      maxDuration,
+      SCALE_FACTOR_BASE_BN,
+      maxWeight,
+      duration2
+    );
     assertBNEqual(
       stakeReceipt2.effectiveStake,
       stakeReceipt2.depositAmount.mul(weight)
@@ -567,10 +564,7 @@ describe("deposit", () => {
     ]);
 
     assertBNEqual(receipt.lockupDuration, maxDuration);
-    assertBNEqual(
-      receipt.effectiveStake,
-      receipt.depositAmount.mul(maxWeight)
-    );
+    assertBNEqual(receipt.effectiveStake, receipt.depositAmount.mul(maxWeight));
     assertBNEqual(
       stakeMintAccountAfter.amount,
       stakeMintAccountBefore.amount.add(

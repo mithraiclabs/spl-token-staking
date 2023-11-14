@@ -197,12 +197,13 @@ export const calculateStakeWeight = (
     return baseWeight;
   }
   const durationExceedingMin = duration.sub(minDuration);
+  const normalizedWeight = durationExceedingMin
+    .mul(SCALE_FACTOR_BASE_BN)
+    .div(durationSpan);
+  const weightDiff = maxWeight.sub(baseWeight);
+
   return anchor.BN.max(
-    durationExceedingMin
-      .mul(SCALE_FACTOR_BASE_BN)
-      .mul(maxWeight)
-      .div(durationSpan)
-      .div(SCALE_FACTOR_BASE_BN),
+    baseWeight.add(normalizedWeight.mul(weightDiff).div(SCALE_FACTOR_BASE_BN)),
     baseWeight
   );
 };
