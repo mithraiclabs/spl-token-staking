@@ -229,12 +229,19 @@ impl StakePool {
 
     /// Calculate the stake weight based on a given duration for the current StakePool
     pub fn get_stake_weight(&self, duration: u64) -> u64 {
-        // TODO handle/test base_weight != 1
+        if duration < self.min_duration {
+            panic!("Unreachable: the lockup is less than the minimum allowed")
+        }
+
         let duration_span = self.max_duration.checked_sub(self.min_duration).unwrap();
         if duration_span == 0 {
             return self.base_weight;
         }
-        let duration_exceeding_min = duration.checked_sub(self.min_duration).unwrap();
+
+        let duration_exceeding_min = u64::min(
+            duration.checked_sub(self.min_duration).unwrap(),
+            duration_span,
+        );
         //weight = BaseWeight + (NormalizedWeight * (MaxWeight - BaseWeight)
 
         // The multiplier on a scale of 0 - 1 (aka SCALE_FACTOR_BASE), based on where the duration falls
@@ -328,4 +335,93 @@ impl StakeDepositReceipt {
         }
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Creates a StakePool that is zeroed other than the given values
+    fn mock_stakepool(
+        base_weight: u64,
+        max_weight: u64,
+        min_duration: u64,
+        max_duration: u64,
+    ) -> StakePool {
+        let mut pool = StakePool::zeroed();
+        pool.base_weight = base_weight;
+        pool.max_weight = max_weight;
+        pool.min_duration = min_duration;
+        pool.max_duration = max_duration;
+        pool
+    }
+
+    /// A pool with base weight 1 (* scale), max weight 2 (* scale), min duration 100, max duration 200
+    fn generic_stakepool() -> StakePool {
+        let base_weight = 1 * SCALE_FACTOR_BASE;
+        let max_weight = 2 * SCALE_FACTOR_BASE;
+        let min_duration = 100;
+        let max_duration = 200;
+
+        mock_stakepool(base_weight, max_weight, min_duration, max_duration)
+    }
+
+    #[test]
+    #[should_panic(expected = "Unreachable: the lockup is less than the minimum allowed")]
+    fn get_stake_weight_duration_less_than_min() {
+        let stake_pool = generic_stakepool();
+        let min_duration = stake_pool.min_duration;
+        stake_pool.get_stake_weight(min_duration - 1);
+    }
+
+    #[test]
+    fn get_stake_weight_duration_equal_min() {
+        let stake_pool = generic_stakepool();
+        let base_weight = stake_pool.base_weight;
+        let min_duration = stake_pool.min_duration;
+        assert_eq!(stake_pool.get_stake_weight(min_duration), base_weight);
+    }
+
+    #[test]
+    fn get_stake_weight_duration_midpoint() {
+        let stake_pool = generic_stakepool();
+        let base_weight = stake_pool.base_weight;
+        let max_weight = stake_pool.max_weight;
+        let min_duration = stake_pool.min_duration;
+        let max_duration = stake_pool.max_duration;
+        let mid_duration = (min_duration + max_duration) / 2;
+        // mid = 150. span = (150 - 100) / (200 - 100) = 50 / 100 = .5
+        // I.e. the weight should be exactly halfway between base and max.
+        assert_eq!(
+            stake_pool.get_stake_weight(mid_duration),
+            (base_weight + max_weight) / 2
+        );
+    }
+
+    #[test]
+    fn get_stake_weight_duration_equal_max() {
+        let stake_pool = generic_stakepool();
+        let max_weight = stake_pool.max_weight;
+        let max_duration = stake_pool.max_duration;
+        assert_eq!(stake_pool.get_stake_weight(max_duration), max_weight);
+    }
+
+    #[test]
+    fn get_stake_weight_duration_greater_than_max() {
+        let stake_pool = generic_stakepool();
+        let max_weight = stake_pool.max_weight;
+        let max_duration = stake_pool.max_duration;
+        assert_eq!(stake_pool.get_stake_weight(max_duration + 1), max_weight);
+    }
+
+    // A badly configured pool where the min duration = max duration.
+    #[test]
+    fn get_stake_weight_min_duration_equals_max() {
+        let mut stake_pool = generic_stakepool();
+        stake_pool.max_duration = stake_pool.min_duration;
+        let base_weight = stake_pool.base_weight;
+        let max_duration = stake_pool.max_duration;
+        assert_eq!(stake_pool.get_stake_weight(max_duration + 1), base_weight);
+    }
+
 }
