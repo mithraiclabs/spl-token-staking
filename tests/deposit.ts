@@ -11,6 +11,7 @@ import {
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
   createTransferInstruction,
+  createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import {
   SCALE_FACTOR_BASE,
@@ -75,7 +76,6 @@ describe("deposit", () => {
   const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
   const minDuration = new anchor.BN(1000);
   const maxDuration = new anchor.BN(4 * 31536000);
-  const durationDiff = maxDuration.sub(minDuration);
   const digitShift = getDigitShift(
     BigInt(maxWeight.toString()),
     TEST_MINT_DECIMALS
@@ -121,6 +121,7 @@ describe("deposit", () => {
     await program.methods
       .deposit(nextNonce, deposit1Amount, minDuration)
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
@@ -158,6 +159,7 @@ describe("deposit", () => {
     assertBNEqual(vault.amount, deposit1Amount);
     assertKeysEqual(stakeReceipt.stakePool, stakePoolKey);
     assertKeysEqual(stakeReceipt.owner, depositor.publicKey);
+    assertKeysEqual(stakeReceipt.payer, depositor.publicKey);
     assertBNEqual(stakeReceipt.depositAmount, deposit1Amount);
     stakeReceipt.claimedAmounts.forEach((claimed, index) => {
       assert.equal(claimed.toString(), "0", `claimed index ${index} failed`);
@@ -206,6 +208,7 @@ describe("deposit", () => {
     await program.methods
       .deposit(nextNonce, deposit2Amount, minDuration)
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakeMint,
@@ -242,6 +245,7 @@ describe("deposit", () => {
     assertKeysEqual(stakeReceipt.stakePool, stakePoolKey);
     assertBNEqual(stakeReceipt.depositAmount, deposit2Amount);
     assertKeysEqual(stakeReceipt.owner, depositor.publicKey);
+    assertKeysEqual(stakeReceipt.payer, depositor.publicKey);
     stakeReceipt.claimedAmounts.forEach((claimed, index) => {
       if (index === 0) {
         // RewardPool 0 should have some claimed amount, so must assert non zero
@@ -296,6 +300,7 @@ describe("deposit", () => {
     await program.methods
       .deposit(receiptNonce1, deposit2Amount, maxDuration)
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
@@ -340,6 +345,7 @@ describe("deposit", () => {
     await program.methods
       .deposit(receiptNonce2, deposit2Amount, duration2)
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
@@ -427,6 +433,7 @@ describe("deposit", () => {
       await program.methods
         .deposit(nextNonce, deposit2Amount, minDuration)
         .accounts({
+          payer: depositor.publicKey,
           owner: depositor.publicKey,
           from: mintToBeStakedAccount,
           stakeMint,
@@ -478,6 +485,7 @@ describe("deposit", () => {
       await program.methods
         .deposit(nextNonce, deposit2Amount, new anchor.BN(50))
         .accounts({
+          payer: depositor.publicKey,
           owner: depositor.publicKey,
           from: mintToBeStakedAccount,
           stakeMint,
@@ -537,6 +545,7 @@ describe("deposit", () => {
     await program.methods
       .deposit(nextNonce, deposit2Amount, maxDuration.muln(2))
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakeMint,
@@ -576,5 +585,83 @@ describe("deposit", () => {
     );
   });
 
-  // TODO total_weighted_stake overflow testing
+  it("should allow staking for different owner", async () => {
+    const depositAmount = new anchor.BN(1_000_000_000);
+    // should mint stake represenation to the owner wallet
+    const owner = new anchor.web3.Keypair();
+    const nextNonce = await getNextUnusedStakeReceiptNonce(
+      program.provider.connection,
+      program.programId,
+      owner.publicKey,
+      stakePoolKey
+    );
+    assert.equal(nextNonce, 0);
+    const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        owner.publicKey.toBuffer(),
+        stakePoolKey.toBuffer(),
+        new anchor.BN(nextNonce).toArrayLike(Buffer, "le", 4),
+        Buffer.from("stakeDepositReceipt", "utf-8"),
+      ],
+      program.programId
+    );
+    const stakeMintAccountKey = getAssociatedTokenAddressSync(
+      stakeMint,
+      owner.publicKey,
+      false,
+      TOKEN_PROGRAM_ID
+    );
+    const createStakeMintAcctIx = createAssociatedTokenAccountInstruction(
+      depositor.publicKey,
+      stakeMintAccountKey,
+      owner.publicKey,
+      stakeMint
+    );
+    const mintToBeStakedAccountBefore =
+      await tokenProgram.account.account.fetch(mintToBeStakedAccount);
+
+    await program.methods
+      .deposit(nextNonce, depositAmount, minDuration)
+      .accounts({
+        payer: depositor.publicKey,
+        owner: owner.publicKey,
+        from: mintToBeStakedAccount,
+        stakePool: stakePoolKey,
+        vault: vaultKey,
+        stakeMint,
+        destination: stakeMintAccountKey,
+        stakeDepositReceipt: stakeReceiptKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .preInstructions([createStakeMintAcctIx])
+      .remainingAccounts([
+        {
+          pubkey: rewardVaultKey,
+          isWritable: false,
+          isSigner: false,
+        },
+      ])
+      .signers([depositor])
+      .rpc({ skipPreflight: true });
+
+    const [mintToBeStakedAccountAfter, stakeMintAccount, stakeReceipt] =
+      await Promise.all([
+        tokenProgram.account.account.fetch(mintToBeStakedAccount),
+        tokenProgram.account.account.fetch(stakeMintAccountKey),
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+      ]);
+    assertKeysEqual(stakeReceipt.owner, owner.publicKey);
+    assertBNEqual(stakeReceipt.depositAmount, depositAmount);
+    assertKeysEqual(stakeReceipt.payer, depositor.publicKey);
+    assertBNEqual(
+      stakeMintAccount.amount,
+      depositAmount.div(new anchor.BN(10 ** digitShift))
+    );
+    assertBNEqual(
+      mintToBeStakedAccountAfter.amount,
+      mintToBeStakedAccountBefore.amount.sub(depositAmount)
+    );
+  });
 });

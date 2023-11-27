@@ -103,6 +103,8 @@ export const addRewardPool = async (
 /**
  * Returns the Anchor method builder for the Stake (aka Deposit) instruction.
  * @param program 
+ * @param payer
+ * @param owner
  * @param stakePoolKey 
  * @param from 
  * @param stakeMintAccount 
@@ -114,6 +116,8 @@ export const addRewardPool = async (
  */
 export const createStakeBuilder = (
   program: anchor.Program<SplTokenStaking>,
+  payer: anchor.web3.PublicKey,
+  owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
   from: anchor.Address,
   stakeMintAccount: anchor.Address,
@@ -148,7 +152,8 @@ export const createStakeBuilder = (
   return program.methods
     .deposit(receiptNonce, amount, duration)
     .accounts({
-      owner: program.provider.publicKey,
+      payer,
+      owner,
       from,
       stakePool: stakePoolKey,
       vault: vaultKey,
@@ -170,6 +175,8 @@ export const createStakeBuilder = (
 /**
  * Generate the instruction to Deposit (aka Stake).
  * @param program
+ * @param payer
+ * @param owner
  * @param stakePoolKey
  * @param from
  * @param stakeMintAccount
@@ -181,6 +188,8 @@ export const createStakeBuilder = (
  */
 export const createStakeInstruction = async (
   program: anchor.Program<SplTokenStaking>,
+  payer: anchor.web3.PublicKey,
+  owner: anchor.web3.PublicKey,
   stakePoolkey: anchor.Address,
   from: anchor.Address,
   stakeMintAccount: anchor.Address,
@@ -191,6 +200,8 @@ export const createStakeInstruction = async (
 ) => {
   return createStakeBuilder(
     program,
+    payer,
+    owner,
     stakePoolkey,
     from,
     stakeMintAccount,
@@ -204,6 +215,8 @@ export const createStakeInstruction = async (
 /**
  * Stake with an existing StakePool.
  * @param program
+ * @param payer
+ * @param owner
  * @param stakePoolNonce
  * @param stakePoolMint
  * @param stakePoolAuthority
@@ -217,6 +230,8 @@ export const createStakeInstruction = async (
  */
 export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
+  payer: anchor.web3.PublicKey,
+  owner: anchor.web3.PublicKey,
   stakePoolNonce: number,
   stakePoolMint: anchor.Address,
   stakePoolAuthority: anchor.Address,
@@ -245,6 +260,8 @@ export const deposit = async (
   );
   return createStakeBuilder(
     program,
+    payer,
+    owner,
     stakePoolKey,
     from,
     stakeMintAccount,

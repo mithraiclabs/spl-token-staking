@@ -56,6 +56,7 @@ try{
   await program.methods
     .deposit(receiptNonce, amount, duration)
     .accounts({
+      payer: depositor.publicKey,
       owner: depositor.publicKey,
       from: vaultMintAccount,
       stakePool: stakePoolKey,
