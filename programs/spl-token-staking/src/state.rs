@@ -271,8 +271,10 @@ impl StakePool {
 
 #[account]
 pub struct StakeDepositReceipt {
-    /** Pubkey that created the deposit */
+    /** Pubkey that owns the staked assets */
     pub owner: Pubkey,
+    /** Pubkey that paid for the deposit */
+    pub payer: Pubkey,
     /** StakePool the deposit is for */
     pub stake_pool: Pubkey,
     /** Duration of the lockup period in seconds */

@@ -9,9 +9,14 @@ use crate::state::u128;
 #[derive(Accounts)]
 #[instruction(nonce: u32)]
 pub struct Deposit<'info> {
-    /// Payer and owner of the StakeDepositReceipt
+    // Payer to actually stake the mint tokens
     #[account(mut)]
-    pub owner: Signer<'info>,
+    pub payer: Signer<'info>,
+    
+    /// Owner of the StakeDepositReceipt, which may differ
+    /// from the account staking.
+    /// CHECK: No check needed since this account will own the StakeReceipt.
+    pub owner: UncheckedAccount<'info>,
 
     /// Token Account to transfer stake_mint from, to be deposited into the vault
     #[account(mut)]
@@ -48,7 +53,7 @@ pub struct Deposit<'info> {
         b"stakeDepositReceipt",
       ],
       bump,
-      payer = owner,
+      payer = payer,
       space = 8 + StakeDepositReceipt::LEN,
     )]
     pub stake_deposit_receipt: Account<'info, StakeDepositReceipt>,
@@ -59,14 +64,14 @@ pub struct Deposit<'info> {
 }
 
 impl<'info> Deposit<'info> {
-    /// Transfer the stake_mint from the owners's address to the StakePool vault.
+    /// Transfer the stake_mint from the payer's address to the StakePool vault.
     pub fn transfer_from_user_to_stake_vault(&self, amount: u64) -> Result<()> {
         let cpi_ctx = CpiContext::new(
             self.token_program.to_account_info(),
             Transfer {
                 from: self.from.to_account_info(),
                 to: self.vault.to_account_info(),
-                authority: self.owner.to_account_info(),
+                authority: self.payer.to_account_info(),
             },
         );
         token::transfer(cpi_ctx, amount)
@@ -112,6 +117,7 @@ pub fn handler<'info>(
 
         stake_deposit_receipt.stake_pool = ctx.accounts.stake_pool.key();
         stake_deposit_receipt.owner = ctx.accounts.owner.key();
+        stake_deposit_receipt.payer = ctx.accounts.payer.key();
         stake_deposit_receipt.deposit_amount = amount;
         stake_deposit_receipt.effective_stake = u128(effect_amount_staked.to_le_bytes());
         stake_deposit_receipt.lockup_duration = lockup_duration;

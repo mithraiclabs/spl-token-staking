@@ -114,6 +114,7 @@ describe("decimal-overflow", () => {
     await program.methods
       .deposit(receiptNonce, new anchor.BN(U64_MAX.toString()), maxDuration)
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,

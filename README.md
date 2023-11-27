@@ -64,8 +64,10 @@ bump_seed: u8,
 **StakeDepositReceipt**
 
 ```rust
-/** Pubkey that created the deposit */
+/** Pubkey that owns the staked assets */
 owner: Pubkey,
+/** Pubkey that paid for the deposit */
+payer: Pubkey,
 /** StakePool the deposit is for */
 stake_pool: Pubkey,
 /** Duration of the lockup period in seconds */

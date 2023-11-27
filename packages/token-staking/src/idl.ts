@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "0.1.1",
+  version: "0.1.2",
   name: "spl_token_staking",
   instructions: [
     {
@@ -156,10 +156,18 @@ export const _SplTokenStakingIDL = {
       ],
       accounts: [
         {
-          name: "owner",
+          name: "payer",
           isMut: true,
           isSigner: true,
-          docs: ["Payer and owner of the StakeDepositReceipt"],
+        },
+        {
+          name: "owner",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "Owner of the StakeDepositReceipt, which may differ",
+            "from the account staking.",
+          ],
         },
         {
           name: "from",
@@ -466,7 +474,12 @@ export const _SplTokenStakingIDL = {
         fields: [
           {
             name: "owner",
-            docs: ["Pubkey that created the deposit"],
+            docs: ["Pubkey that owns the staked assets"],
+            type: "publicKey",
+          },
+          {
+            name: "payer",
+            docs: ["Pubkey that paid for the deposit"],
             type: "publicKey",
           },
           {

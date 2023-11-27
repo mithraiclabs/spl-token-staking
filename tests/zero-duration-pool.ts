@@ -91,6 +91,7 @@ describe("zero-duration-pool", () => {
     await program.methods
       .deposit(nextNonce, depositAmount, new anchor.BN(0))
       .accounts({
+        payer: depositor.publicKey,
         owner: depositor.publicKey,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
