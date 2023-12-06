@@ -12,6 +12,7 @@ import { SplTokenStaking } from "./idl";
  * @param maxWeight
  * @param minDuration
  * @param maxDuration
+ * @param authority - defaults to `program.provider.publicKey`
  */
 export const initStakePool = async (
   program: anchor.Program<SplTokenStaking>,
@@ -19,13 +20,17 @@ export const initStakePool = async (
   nonce = 0,
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
   minDuration = new anchor.BN(0),
-  maxDuration = new anchor.BN("18446744073709551615")
+  maxDuration = new anchor.BN("18446744073709551615"),
+  authority?: anchor.Address
 ) => {
+  const _authority = authority
+    ? new anchor.web3.PublicKey(authority)
+    : program.provider.publicKey;
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(nonce).toArrayLike(Buffer, "le", 1),
       new anchor.web3.PublicKey(mint).toBuffer(),
-      program.provider.publicKey.toBuffer(),
+      _authority.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
     program.programId
@@ -41,7 +46,8 @@ export const initStakePool = async (
   await program.methods
     .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
     .accounts({
-      authority: program.provider.publicKey,
+      payer: program.provider.publicKey,
+      authority: _authority,
       stakePool: stakePoolKey,
       stakeMint: stakeMintKey,
       mint,
@@ -102,17 +108,17 @@ export const addRewardPool = async (
 
 /**
  * Returns the Anchor method builder for the Stake (aka Deposit) instruction.
- * @param program 
+ * @param program
  * @param payer
  * @param owner
- * @param stakePoolKey 
- * @param from 
- * @param stakeMintAccount 
- * @param amount 
- * @param duration 
- * @param receiptNonce 
- * @param rewardVaults 
- * @returns 
+ * @param stakePoolKey
+ * @param from
+ * @param stakeMintAccount
+ * @param amount
+ * @param duration
+ * @param receiptNonce
+ * @param rewardVaults
+ * @returns
  */
 export const createStakeBuilder = (
   program: anchor.Program<SplTokenStaking>,

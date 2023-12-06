@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "0.1.2",
+  version: "0.1.3",
   name: "spl_token_staking",
   instructions: [
     {
@@ -14,10 +14,16 @@ export const _SplTokenStakingIDL = {
       ],
       accounts: [
         {
-          name: "authority",
+          name: "payer",
           isMut: true,
           isSigner: true,
-          docs: ["Payer and authority of the StakePool"],
+          docs: ["Payer of rent"],
+        },
+        {
+          name: "authority",
+          isMut: false,
+          isSigner: false,
+          docs: ["Authority that can add rewards pools"],
         },
         {
           name: "mint",
