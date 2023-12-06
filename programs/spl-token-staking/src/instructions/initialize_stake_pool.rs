@@ -14,9 +14,13 @@ use crate::{
   max_duration: u64,
 )]
 pub struct InitializeStakePool<'info> {
-    /// Payer and authority of the StakePool
+    /// Payer of rent
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>,
+
+    /// Authority that can add rewards pools
+    /// CHECK: No check needed since this will be signer to `AddRewardPool`
+    pub authority: UncheckedAccount<'info>,
 
     /// SPL Token Mint of the underlying token to be deposited for staking
     pub mint: Account<'info, Mint>,
@@ -30,7 +34,7 @@ pub struct InitializeStakePool<'info> {
         b"stakePool",
       ],
       bump,
-      payer = authority,
+      payer = payer,
       space = 8 + StakePool::LEN,
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
@@ -40,7 +44,7 @@ pub struct InitializeStakePool<'info> {
       init,
       seeds = [&stake_pool.key().to_bytes()[..], b"stakeMint"],
       bump,
-      payer = authority,
+      payer = payer,
       mint::decimals = mint.decimals.checked_sub(get_digit_shift_by_max_scalar(max_weight)).unwrap_or_default(),
       mint::authority = stake_pool,
     )]
@@ -51,7 +55,7 @@ pub struct InitializeStakePool<'info> {
       init,
       seeds = [&stake_pool.key().to_bytes()[..], b"vault"],
       bump,
-      payer = authority,
+      payer = payer,
       token::mint = mint,
       token::authority = stake_pool,
     )]
