@@ -145,4 +145,65 @@ describe("add-reward-pool", () => {
     }
     assert.isTrue(false, "TX should have failed");
   });
+
+  it("Should add RewardPool to StakePool from external authority", async () => {
+    const stakePoolNonce = 200;
+    const authority = new anchor.web3.Keypair();
+    await initStakePool(
+      program,
+      mintToBeStaked,
+      stakePoolNonce,
+      undefined,
+      undefined,
+      undefined,
+      authority.publicKey
+    );
+    const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+        mintToBeStaked.toBuffer(),
+        authority.publicKey.toBuffer(),
+        Buffer.from("stakePool", "utf-8"),
+      ],
+      program.programId
+    );
+    const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        stakePoolKey.toBuffer(),
+        rewardMint1.toBuffer(),
+        Buffer.from("rewardVault", "utf-8"),
+      ],
+      program.programId
+    );
+    const rewardPoolIndex = 0;
+    await program.methods
+      .addRewardPool(rewardPoolIndex)
+      .accounts({
+        payer: program.provider.publicKey,
+        authority: authority.publicKey,
+        rewardMint: rewardMint1,
+        stakePool: stakePoolKey,
+        rewardVault: rewardVaultKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([authority])
+      .rpc();
+    const [rewardVault, stakePool] = await Promise.all([
+      tokenProgramInstance.account.account.fetch(rewardVaultKey),
+      program.account.stakePool.fetch(stakePoolKey),
+    ]);
+    assertKeysEqual(rewardVault.mint, rewardMint1);
+    assertKeysEqual(rewardVault.owner, stakePoolKey);
+    assertKeysEqual(
+      stakePool.rewardPools[rewardPoolIndex].rewardVault,
+      rewardVaultKey
+    );
+    assertBNEqual(stakePool.rewardPools[rewardPoolIndex].lastAmount, 0);
+    assertBNEqual(
+      stakePool.rewardPools[rewardPoolIndex].rewardsPerEffectiveStake,
+      0
+    );
+  });
 });

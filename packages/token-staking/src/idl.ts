@@ -94,10 +94,16 @@ export const _SplTokenStakingIDL = {
       ],
       accounts: [
         {
-          name: "authority",
+          name: "payer",
           isMut: true,
           isSigner: true,
-          docs: ["Payer and authority of the StakePool"],
+          docs: ["Payer of rent"],
+        },
+        {
+          name: "authority",
+          isMut: false,
+          isSigner: true,
+          docs: ["Authority of the StakePool"],
         },
         {
           name: "rewardMint",

@@ -7,8 +7,11 @@ use crate::errors::ErrorCode;
 #[derive(Accounts)]
 #[instruction(index: u8)]
 pub struct AddRewardPool<'info> {
-  /// Payer and authority of the StakePool
+  /// Payer of rent
   #[account(mut)]
+  pub payer: Signer<'info>,
+
+  /// Authority of the StakePool
   pub authority: Signer<'info>,
 
   /// SPL Token Mint of the token that will be distributed as rewards
@@ -28,7 +31,7 @@ pub struct AddRewardPool<'info> {
     init,
     seeds = [stake_pool.key().as_ref(), reward_mint.key().as_ref(), b"rewardVault"],
     bump,
-    payer = authority,
+    payer = payer,
     token::mint = reward_mint,
     token::authority = stake_pool,
   )]
