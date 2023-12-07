@@ -66,6 +66,7 @@ export const initStakePool = async (
  * @param stakePoolMint
  * @param rewardMint
  * @param rewardPoolIndex
+ * @param authority
  * @returns
  */
 export const addRewardPool = async (
@@ -73,13 +74,17 @@ export const addRewardPool = async (
   stakePoolNonce: number,
   stakePoolMint: anchor.Address,
   rewardMint: anchor.web3.PublicKey,
-  rewardPoolIndex = 0
+  rewardPoolIndex = 0,
+  authority?: anchor.Address
 ) => {
+  const _authority = authority
+    ? new anchor.web3.PublicKey(authority)
+    : program.provider.publicKey;
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
       new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
-      program.provider.publicKey.toBuffer(),
+      _authority.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
     program.programId
@@ -95,7 +100,8 @@ export const addRewardPool = async (
   return program.methods
     .addRewardPool(rewardPoolIndex)
     .accounts({
-      authority: program.provider.publicKey,
+      payer: program.provider.publicKey,
+      authority: _authority,
       rewardMint,
       stakePool: stakePoolKey,
       rewardVault: rewardVaultKey,
