@@ -32,6 +32,13 @@ pub mod spl_token_staking {
         )
     }
 
+    /// DANGEROUSLY Update `authority` of [StakePool](state::StakePool) to `new_authority`. 
+    /// This is useful for quickly setting up a StakePool and then transfering it to a 
+    /// form of governance.
+    pub fn transfer_authority(ctx: Context<TransferAuthority>) -> Result<()> {
+        transfer_authority::handler(ctx)
+    }
+
     /// Add a [RewardPool](state::RewardPool) to an existing [StakePool](state::StakePool).
     /// 
     /// Can only be invoked by the StakePool's authority.
