@@ -30,15 +30,14 @@
     superstruct "^0.15.4"
     toml "^3.0.0"
 
-"@coral-xyz/anchor@=0.28.1-beta.2", "@coral-xyz/anchor@^0.28.1-beta.2":
-  version "0.28.1-beta.2"
-  resolved "https://registry.yarnpkg.com/@coral-xyz/anchor/-/anchor-0.28.1-beta.2.tgz#4ddd4b2b66af04407be47cf9524147793ec514a0"
-  integrity sha512-xreUcOFF8+IQKWOBUrDKJbIw2ftpRVybFlEPVrbSlOBCbreCWrQ5754Gt9cHIcuBDAzearCDiBqzsGQdNgPJiw==
+"@coral-xyz/anchor@^0.29.0":
+  version "0.29.0"
+  resolved "https://registry.yarnpkg.com/@coral-xyz/anchor/-/anchor-0.29.0.tgz#bd0be95bedfb30a381c3e676e5926124c310ff12"
+  integrity sha512-eny6QNG0WOwqV0zQ7cs/b1tIuzZGmP7U7EcH+ogt4Gdbl8HDmIYVMh/9aTmYZPaFWjtUaI8qSn73uYEXWfATdA==
   dependencies:
-    "@coral-xyz/borsh" "^0.28.0"
+    "@coral-xyz/borsh" "^0.29.0"
     "@noble/hashes" "^1.3.1"
     "@solana/web3.js" "^1.68.0"
-    base64-js "^1.5.1"
     bn.js "^5.1.2"
     bs58 "^4.0.1"
     buffer-layout "^1.2.2"
@@ -59,6 +58,14 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
+"@coral-xyz/borsh@^0.29.0":
+  version "0.29.0"
+  resolved "https://registry.yarnpkg.com/@coral-xyz/borsh/-/borsh-0.29.0.tgz#79f7045df2ef66da8006d47f5399c7190363e71f"
+  integrity sha512-s7VFVa3a0oqpkuRloWVPdCK7hMbAMY270geZOGfCnaqexrP5dTIpbEHL33req6IYPPJ0hYa71cdvJ1h6V55/oQ==
+  dependencies:
+    bn.js "^5.1.2"
+    buffer-layout "^1.2.0"
+
 "@coral-xyz/spl-token@^0.28.0":
   version "0.28.0"
   resolved "https://registry.yarnpkg.com/@coral-xyz/spl-token/-/spl-token-0.28.0.tgz#32fa58a076a91adeeb0eda502b48a47a252d4c21"
@@ -67,19 +74,19 @@
     "@coral-xyz/anchor" "=0.28.0"
     "@native-to-anchor/buffer-layout" "=0.1.0"
 
-"@coral-xyz/spl-token@^0.28.1-beta.2":
-  version "0.28.1-beta.2"
-  resolved "https://registry.yarnpkg.com/@coral-xyz/spl-token/-/spl-token-0.28.1-beta.2.tgz#3e02c405d04705ccaeb0958d3aa4b435499b0b03"
-  integrity sha512-q7mBgurs3J3e/LKzIR54ttEb/MnSnA1K9W930QjQVYGGbM7OH1JIR4XCsRCimu/XHC1+p4WdbRd8cq08MX4DEg==
+"@mithraic-labs/spl-governance@^0.0.1-beta.5":
+  version "0.0.1-beta.5"
+  resolved "https://registry.yarnpkg.com/@mithraic-labs/spl-governance/-/spl-governance-0.0.1-beta.5.tgz#bd29e60dcad9ea1a4cf83c64f09a4549a56a65a0"
+  integrity sha512-7Z43VXFGPmB1u47N6/35ilPjFXl1Gi9IJ8AyhtLjm0T5LvLv/UFq9baHWzkorPOlG7OgYhcjQ14kxd9iboHy1w==
   dependencies:
-    "@coral-xyz/anchor" "=0.28.1-beta.2"
-    "@native-to-anchor/buffer-layout" "=0.1.0"
+    "@coral-xyz/anchor" "^0.29.0"
+    "@native-to-anchor/buffer-layout" "^0.1.0"
 
 "@mithraic-labs/token-staking@link:./packages/token-staking":
   version "0.0.0"
   uid ""
 
-"@native-to-anchor/buffer-layout@=0.1.0":
+"@native-to-anchor/buffer-layout@=0.1.0", "@native-to-anchor/buffer-layout@^0.1.0":
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/@native-to-anchor/buffer-layout/-/buffer-layout-0.1.0.tgz#ff0cb66341bc820b8ee73bb1d1d43bae7e3554b0"
   integrity sha512-7Ykz9KRAm53XqHj5blDUKPX+OXAPO4GZBW4zJhfHGIAbzmqsUFh9kMqR66Bak3mp6wyv1OVTwSr8ZGHKswPxDg==

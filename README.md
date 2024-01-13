@@ -15,6 +15,13 @@ Caveats:
 - Un-staking is all or none
 - Precision loss: based on the `max_weight` or largest scalar of the deposited amount, we must truncate some precision in order to fit it into a `u64` for the SPL Token representation of effective stake weight. To do this, we calculate the minimum number of digits that must be truncated to fit into the `u64::MAX` based on the given `max_weight`.
 
+## SPL Governance addin TODO
+[] CreateRegistrar IX
+[] Add Registrar to StakePool
+[] UpdateVoterWeightRecord IX
+[] UpdateMaxVoterWeightRecord IX
+[] Remove Stake representation mint
+
 ### State
 
 **RewardPool**
@@ -83,7 +90,24 @@ Indexes align with the StakedPool reward_pools property. */
 claimed_amounts: Vec<u128>
 ```
 
+**Registrar**
+
+```rust
+/** Governance program ID */
+governance_program_id: Pubkey,
+/** Realm instance Registrar belongs to */
+realm: Pubkey,
+/** Governing token mint for Realm instance */
+realm_governing_token_mint: Pubkey,
+/** Authority for the realm config */
+realm_authority: Pubkey,
+bump: u8,
+```
+
 ## Instructions
+
+## CreateRegistrar
+- Create a `Registrar` where the effective stake will be used as voting power
 
 ## InitStakePool
 

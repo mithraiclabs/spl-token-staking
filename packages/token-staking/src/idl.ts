@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "0.1.3",
+  version: "0.2.0",
   name: "spl_token_staking",
   instructions: [
     {
@@ -371,6 +371,72 @@ export const _SplTokenStakingIDL = {
       ],
       args: [],
     },
+    {
+      name: "createRegistrar",
+      accounts: [
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+        },
+        {
+          name: "registrar",
+          isMut: true,
+          isSigner: false,
+          docs: [
+            "The voting registrar. There can only be a single registrar",
+            "per governance realm and governing mint.",
+          ],
+        },
+        {
+          name: "realm",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "An spl-governance realm",
+            "",
+            "- realm is owned by the governance_program_id",
+            "- realm_governing_token_mint must be the community or council mint",
+            "- realm_authority is realm.authority",
+          ],
+        },
+        {
+          name: "governanceProgramId",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "The program id of the spl-governance program the realm belongs to.",
+          ],
+        },
+        {
+          name: "realmGoverningTokenMint",
+          isMut: false,
+          isSigner: false,
+          docs: ["Either the realm community mint or the council mint."],
+        },
+        {
+          name: "realmAuthority",
+          isMut: false,
+          isSigner: true,
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: "registrarBump",
+          type: "u8",
+        },
+      ],
+    },
   ],
   accounts: [
     {
@@ -532,6 +598,39 @@ export const _SplTokenStakingIDL = {
         ],
       },
     },
+    {
+      name: "registrar",
+      docs: ["Instance of a voting rights distributor."],
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "governanceProgramId",
+            type: "publicKey",
+          },
+          {
+            name: "realm",
+            type: "publicKey",
+          },
+          {
+            name: "realmGoverningTokenMint",
+            type: "publicKey",
+          },
+          {
+            name: "realmAuthority",
+            type: "publicKey",
+          },
+          {
+            name: "votingMint",
+            type: "publicKey",
+          },
+          {
+            name: "bump",
+            type: "u8",
+          },
+        ],
+      },
+    },
   ],
   types: [
     {
@@ -561,6 +660,30 @@ export const _SplTokenStakingIDL = {
             type: {
               array: ["u8", 8],
             },
+          },
+        ],
+      },
+    },
+    {
+      name: "VoterWeightAction",
+      docs: ["The governance action VoterWeight is evaluated for"],
+      type: {
+        kind: "enum",
+        variants: [
+          {
+            name: "CastVote",
+          },
+          {
+            name: "CommentProposal",
+          },
+          {
+            name: "CreateGovernance",
+          },
+          {
+            name: "CreateProposal",
+          },
+          {
+            name: "SignOffProposal",
           },
         ],
       },

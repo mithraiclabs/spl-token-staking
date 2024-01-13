@@ -339,6 +339,24 @@ impl StakeDepositReceipt {
     }
 }
 
+
+// Governance addin related state
+
+/// Instance of a voting rights distributor.
+#[account(zero_copy)]
+#[derive(Default)]
+pub struct Registrar {
+    /** Governance program ID */
+    pub governance_program_id: Pubkey,
+    /** Realm instance Registrar belongs to */
+    pub realm: Pubkey,
+    /** Governing token mint for Realm instance */
+    pub realm_governing_token_mint: Pubkey,
+    /** Authority for the realm config */
+    pub realm_authority: Pubkey,
+    pub bump: u8,
+}
+// End Governance addin related state
 #[cfg(test)]
 mod tests {
     use super::*;
