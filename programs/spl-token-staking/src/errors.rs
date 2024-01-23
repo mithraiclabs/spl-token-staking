@@ -28,4 +28,6 @@ pub enum ErrorCode {
   InvalidStakePoolWeight, // 6011
   #[msg("Duration too short")]
   DurationTooShort, // 6012
+  #[msg("Realm Authority is invalid")]
+  InvalidRealmAuthority, // 6013
 }

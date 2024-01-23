@@ -95,7 +95,7 @@ impl<'info> Deposit<'info> {
 }
 
 pub fn handler<'info>(
-    ctx: Context<Deposit>,
+    ctx: Context<'_, '_, 'info, 'info, Deposit>,
     _nonce: u32,
     amount: u64,
     lockup_duration: u64,

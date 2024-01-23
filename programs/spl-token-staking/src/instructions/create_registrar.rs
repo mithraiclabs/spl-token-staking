@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
+use spl_governance::state::realm;
 use std::mem::size_of;
 
-use crate::state::Registrar;
+use crate::{errors::ErrorCode, state::Registrar};
 
 #[derive(Accounts)]
 pub struct CreateRegistrar<'info> {
@@ -42,12 +43,24 @@ pub struct CreateRegistrar<'info> {
 /// Creates a new voting registrar.
 pub fn handler(ctx: Context<CreateRegistrar>, registrar_bump: u8) -> Result<()> {
     let registrar = &mut ctx.accounts.registrar.load_init()?;
-    require_eq!(registrar_bump, *ctx.bumps.get("registrar").unwrap());
+    require_eq!(registrar_bump, ctx.bumps.registrar);
     registrar.bump = registrar_bump;
     registrar.governance_program_id = ctx.accounts.governance_program_id.key();
     registrar.realm = ctx.accounts.realm.key();
     registrar.realm_governing_token_mint = ctx.accounts.realm_governing_token_mint.key();
     registrar.realm_authority = ctx.accounts.realm_authority.key();
 
+    // Verify that "realm_authority" is the expected authority on "realm"
+    // and that the mint matches realm mint.
+    let realm = realm::get_realm_data_for_governing_token_mint(
+      &registrar.governance_program_id,
+      &ctx.accounts.realm.to_account_info(),
+      &registrar.realm_governing_token_mint,
+    )?;
+    require_keys_eq!(
+      realm.authority.unwrap(),
+      ctx.accounts.realm_authority.key(),
+      ErrorCode::InvalidRealmAuthority
+    );
     Ok(())
 }

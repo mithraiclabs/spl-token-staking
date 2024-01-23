@@ -7,7 +7,7 @@ pub struct ClaimAll<'info> {
     pub claim_base: ClaimBase<'info>,
 }
 
-pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, ClaimAll<'info>>) -> Result<()> {
+pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, ClaimAll<'info>>) -> Result<()> {
     {
         let mut stake_pool = ctx.accounts.claim_base.stake_pool.load_mut()?;
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;

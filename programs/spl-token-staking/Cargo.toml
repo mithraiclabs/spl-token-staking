@@ -16,10 +16,12 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.28.0"
-anchor-spl = "0.28.0"
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
 borsh = "0.10.3"
 bytemuck = { version = "1.7", features = ["derive"] }
 jet-proc-macros = { version = "1", package = "jet-proto-proc-macros" }
 static_assertions = "1.1.0"
+spl-governance = { version = "=4.0.0", features = ["no-entrypoint"] }
+spl-governance-addin-api = "=0.1.4"
 uint = "=0.9.1"

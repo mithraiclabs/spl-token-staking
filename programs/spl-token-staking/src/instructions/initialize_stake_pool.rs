@@ -89,6 +89,6 @@ pub fn handler(
     stake_pool.min_duration = min_duration;
     stake_pool.max_duration = max_duration;
     stake_pool.nonce = nonce;
-    stake_pool.bump_seed = *ctx.bumps.get("stake_pool").unwrap();
+    stake_pool.bump_seed = ctx.bumps.stake_pool;
     Ok(())
 }

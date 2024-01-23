@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
+// use borsh::{BorshDeserialize, BorshSerialize, BorshSchema};
 use bytemuck::{Pod, Zeroable};
 use core::primitive;
 use jet_proc_macros::assert_size;
@@ -151,7 +152,7 @@ impl StakePool {
     /// iteration
     pub fn recalculate_rewards_per_effective_stake<'info>(
         &mut self,
-        remaining_accounts: &[AccountInfo<'info>],
+        remaining_accounts: &'info [AccountInfo<'info>],
         reward_vault_account_offset: usize,
     ) -> Result<()> {
         let total_weighted_stake = self.total_weighted_stake_u128();
@@ -356,6 +357,133 @@ pub struct Registrar {
     pub realm_authority: Pubkey,
     pub bump: u8,
 }
+
+// #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+// #[allow(clippy::large_enum_variant)]
+// pub enum GovernanceInstruction {
+//     /// Creates Governance Realm account which aggregates governances for given
+//     /// Community Mint and optional Council Mint
+//     ///
+//     /// 0. `[writable]` Governance Realm account.
+//     ///     * PDA seeds:['governance',name]
+//     /// 1. `[]` Realm authority
+//     /// 2. `[]` Community Token Mint
+//     /// 3. `[writable]` Community Token Holding account.
+//     ///     * PDA seeds: ['governance',realm,community_mint]
+//     ///     The account will be created with the Realm PDA as its owner
+//     /// 4. `[signer]` Payer
+//     /// 5. `[]` System
+//     /// 6. `[]` SPL Token
+//     /// 7. `[]` Sysvar Rent
+//     /// 8. `[]` Council Token Mint - optional
+//     /// 9. `[writable]` Council Token Holding account - optional unless council
+//     ///    is used.
+//     ///     * PDA seeds: ['governance',realm,council_mint]
+//     ///     The account will be created with the Realm PDA as its owner
+//     /// 10. `[writable]` RealmConfig account.
+//     ///     * PDA seeds: ['realm-config', realm]
+//     /// 11. `[]` Optional Community Voter Weight Addin Program Id
+//     /// 12. `[]` Optional Max Community Voter Weight Addin Program Id
+//     /// 13. `[]` Optional Council Voter Weight Addin Program Id
+//     /// 14. `[]` Optional Max Council Voter Weight Addin Program Id
+//     CreateRealm {
+//         #[allow(dead_code)]
+//         /// UTF-8 encoded Governance Realm name
+//         name: String,
+
+//         #[allow(dead_code)]
+//         /// Realm config args
+//         config_args: RealmConfigArgs,
+//     },
+// }
+// #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+// pub struct RealmConfigArgs {
+//     /// Indicates whether council_mint should be used
+//     /// If yes then council_mint account must also be passed to the instruction
+//     pub use_council_mint: bool,
+
+//     /// Min number of community tokens required to create a governance
+//     pub min_community_weight_to_create_governance: u64,
+
+//     /// The source used for community mint max vote weight source
+//     pub community_mint_max_voter_weight_source: MintMaxVoterWeightSource,
+
+//     /// Community token config args
+//     pub community_token_config_args: GoverningTokenConfigArgs,
+
+//     /// Council token config args
+//     pub council_token_config_args: GoverningTokenConfigArgs,
+// }
+
+// #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+// pub struct GoverningTokenConfigArgs {
+//     /// Indicates whether an external addin program should be used to provide
+//     /// voters weights If yes then the voters weight program account must be
+//     /// passed to the instruction
+//     pub use_voter_weight_addin: bool,
+
+//     /// Indicates whether an external addin program should be used to provide
+//     /// max voters weight for the token If yes then the max voter weight
+//     /// program account must be passed to the instruction
+//     pub use_max_voter_weight_addin: bool,
+
+//     /// Governing token type defines how the token is used for governance
+//     pub token_type: GoverningTokenType,
+// }
+
+// #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+// pub enum MintMaxVoterWeightSource {
+//     /// Fraction (10^10 precision) of the governing mint supply is used as max
+//     /// vote weight The default is 100% (10^10) to use all available mint
+//     /// supply for voting
+//     SupplyFraction(u64),
+
+//     /// Absolute value, irrelevant of the actual mint supply, is used as max
+//     /// voter weight
+//     Absolute(u64),
+// }
+
+// #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
+// pub enum GoverningTokenType {
+//     /// Liquid token is a token which is fully liquid and the token owner
+//     /// retains full authority over it.
+//     /// Deposit - Yes
+//     /// Withdraw - Yes  
+//     /// Revoke - No, Realm authority cannot revoke liquid tokens
+//     #[default]
+//     Liquid,
+
+//     /// Membership token is a token controlled by Realm authority
+//     /// Deposit - Yes, membership tokens can be deposited to gain governance
+//     /// power.
+//     /// The membership tokens are conventionally minted into the holding
+//     /// account to keep them out of members possession.
+//     /// Withdraw - No, after membership tokens are deposited they are no longer
+//     /// transferable and can't be withdrawn.
+//     /// Revoke - Yes, Realm authority can Revoke (burn) membership tokens.
+//     Membership,
+
+//     /// Dormant token is a token which is only a placeholder and its deposits
+//     /// are not accepted and not used for governance power within the Realm
+//     ///
+//     /// The Dormant token type is used when only a single voting population is
+//     /// operational. For example a Multisig starter DAO uses Council only
+//     /// and sets Community as Dormant to indicate its not utilized for any
+//     /// governance power. Once the starter DAO decides to decentralise then
+//     /// it can change the Community token to Liquid
+//     ///
+//     /// Note: When an external voter weight plugin which takes deposits of the
+//     /// token is used then the type should be set to Dormant to make the
+//     /// intention explicit
+//     ///
+//     /// Deposit - No, dormant tokens can't be deposited into the Realm
+//     /// Withdraw - Yes, tokens can still be withdrawn from Realm to support
+//     /// scenario where the config is changed while some tokens are still
+//     /// deposited.
+//     /// Revoke - No, Realm authority cannot revoke dormant tokens
+//     Dormant,
+// }
+
 // End Governance addin related state
 #[cfg(test)]
 mod tests {
@@ -385,6 +513,32 @@ mod tests {
 
         mock_stakepool(base_weight, max_weight, min_duration, max_duration)
     }
+
+    // #[test]
+    // fn create_realm_buffer() {
+    //     let create_realm = GovernanceInstruction::CreateRealm {
+    //         config_args: RealmConfigArgs {
+    //             use_council_mint: false,
+    //             min_community_weight_to_create_governance: 100,
+    //             community_mint_max_voter_weight_source: MintMaxVoterWeightSource::Absolute(0),
+    //             community_token_config_args: GoverningTokenConfigArgs {
+    //                 use_voter_weight_addin: true,
+    //                 use_max_voter_weight_addin: false,
+    //                 token_type: GoverningTokenType::Liquid,
+    //             },
+    //             council_token_config_args: GoverningTokenConfigArgs {
+    //                 use_voter_weight_addin: false,
+    //                 use_max_voter_weight_addin: false,
+    //                 token_type: GoverningTokenType::Liquid,
+    //             },
+    //         },
+    //         name: "Test Realm".to_string(),
+    //     };
+    //     let mut account_data = vec![];
+    //     create_realm.serialize(&mut account_data).unwrap();
+    //     println!("CreateRealm {:?}", account_data);
+    //     // len 38
+    // }
 
     #[test]
     #[should_panic(expected = "Unreachable: the lockup is less than the minimum allowed")]

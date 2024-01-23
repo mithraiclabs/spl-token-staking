@@ -9,7 +9,7 @@ import {
 import { mintToBeStaked } from "./hooks";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-describe.only("create-registrar", () => {
+describe("create-registrar", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const splGovernance = createSplGovernanceProgram(
@@ -41,13 +41,26 @@ describe.only("create-registrar", () => {
         ],
         splGovernance.programId
       );
+    const [realmConfigAddress] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("realm-config", "utf-8"), realmAddress.toBuffer()],
+      splGovernance.programId
+    );
     await splGovernance.methods
+      // @ts-ignore
       .createRealm(realmName, {
-        useCommunityVoterWeightAddin: true,
-        useMaxCommunityVoterWeightAddin: false,
+        communityTokenConfigArgs: {
+          useVoterWeightAddin: true,
+          useMaxVoterWeightAddin: false,
+          tokenType: { liquid: {} },
+        },
+        councilTokenConfigArgs: {
+          useVoterWeightAddin: false,
+          useMaxVoterWeightAddin: false,
+          tokenType: { liquid: {} },
+        },
         useCouncilMint: false,
         minCommunityWeightToCreateGovernance: new anchor.BN(100),
-        communityMintMaxVoteWeightSource: { absolute: [new anchor.BN(0)] },
+        communityMintMaxVoteWeightSource: { absolute: [new anchor.BN(5)] },
       })
       .accounts({
         realmAddress,
@@ -60,16 +73,27 @@ describe.only("create-registrar", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .remainingAccounts([
-        // TODO might have to add vote_weight_record_addin and max_vote_weight_record_addin accounts
+        {
+          pubkey: realmConfigAddress,
+          isSigner: false,
+          isWritable: true,
+        },
+        // since `communityTokenConfigArgs.useVoterWeightAddin` is true, we must append the program ID
+        {
+          pubkey: program.programId,
+          isSigner: false,
+          isWritable: false,
+        },
       ])
       .rpc();
   });
 
   it("Create Registrar for SPL Governance plugin", async () => {
-    const realmKey = anchor.web3.PublicKey.default;
-    const realmGoverningTokenMint = anchor.web3.PublicKey.default;
-    const governanceProgramId = anchor.web3.PublicKey.default;
-    const realmAuthority = anchor.web3.PublicKey.default;
+    const realmKey = realmAddress;
+    const realmGoverningTokenMint = mintToBeStaked;
+    const governanceProgramId = splGovernance.programId;
+    // authority is the payer for now.
+    const realmAuthority = program.provider.publicKey;
     const [registrarKey, registrarBump] =
       anchor.web3.PublicKey.findProgramAddressSync(
         [
@@ -79,16 +103,19 @@ describe.only("create-registrar", () => {
         ],
         program.programId
       );
-    await program.methods.createRegistrar(registrarBump).accounts({
-      payer: program.provider.publicKey,
-      registrar: registrarKey,
-      realm: realmKey,
-      governanceProgramId,
-      realmGoverningTokenMint,
-      realmAuthority,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    });
+    await program.methods
+      .createRegistrar(registrarBump)
+      .accounts({
+        payer: program.provider.publicKey,
+        registrar: registrarKey,
+        realm: realmKey,
+        governanceProgramId,
+        realmGoverningTokenMint,
+        realmAuthority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .rpc({ skipPreflight: true });
 
     const registrar = await program.account.registrar.fetch(registrarKey);
     assertKeysEqual(registrar.realm, realmKey);

@@ -88,7 +88,7 @@ impl<'info> Withdraw<'info> {
     }
 }
 
-pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
+pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, Withdraw<'info>>) -> Result<()> {
     ctx.accounts.validate_stake_pool_and_owner()?;
     ctx.accounts
         .claim_base
