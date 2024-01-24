@@ -373,6 +373,7 @@ export const _SplTokenStakingIDL = {
     },
     {
       name: "createRegistrar",
+      docs: ["Create a voting registrar for a Realms instance."],
       accounts: [
         {
           name: "payer",
@@ -436,6 +437,53 @@ export const _SplTokenStakingIDL = {
           type: "u8",
         },
       ],
+    },
+    {
+      name: "createVoterWeightRecord",
+      accounts: [
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+          docs: ["Payer of rent"],
+        },
+        {
+          name: "owner",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "Owner of the VoterStakeRecord and the subsequent StakeDepositReceipts",
+          ],
+        },
+        {
+          name: "registrar",
+          isMut: false,
+          isSigner: false,
+          docs: ["Registrar for the applicable realm"],
+        },
+        {
+          name: "stakePool",
+          isMut: false,
+          isSigner: false,
+          docs: ["StakePool the VoterWeightRecord will be associated with."],
+        },
+        {
+          name: "voterWeightRecord",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [],
     },
   ],
   accounts: [
@@ -606,22 +654,22 @@ export const _SplTokenStakingIDL = {
         fields: [
           {
             name: "governanceProgramId",
+            docs: ["Governance program ID"],
             type: "publicKey",
           },
           {
             name: "realm",
+            docs: ["Realm instance Registrar belongs to"],
             type: "publicKey",
           },
           {
             name: "realmGoverningTokenMint",
+            docs: ["Governing token mint for Realm instance"],
             type: "publicKey",
           },
           {
             name: "realmAuthority",
-            type: "publicKey",
-          },
-          {
-            name: "votingMint",
+            docs: ["Authority for the realm config"],
             type: "publicKey",
           },
           {
@@ -660,30 +708,6 @@ export const _SplTokenStakingIDL = {
             type: {
               array: ["u8", 8],
             },
-          },
-        ],
-      },
-    },
-    {
-      name: "VoterWeightAction",
-      docs: ["The governance action VoterWeight is evaluated for"],
-      type: {
-        kind: "enum",
-        variants: [
-          {
-            name: "CastVote",
-          },
-          {
-            name: "CommentProposal",
-          },
-          {
-            name: "CreateGovernance",
-          },
-          {
-            name: "CreateProposal",
-          },
-          {
-            name: "SignOffProposal",
           },
         ],
       },
@@ -754,6 +778,11 @@ export const _SplTokenStakingIDL = {
       code: 6012,
       name: "DurationTooShort",
       msg: "Duration too short",
+    },
+    {
+      code: 6013,
+      name: "InvalidRealmAuthority",
+      msg: "Realm Authority is invalid",
     },
   ],
 } as const;

@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.28.0",
-    "@coral-xyz/spl-token": "^0.28.0"
+    "@coral-xyz/spl-token": "^0.28.0",
+    "@native-to-anchor/buffer-layout": "^0.1.0"
   },
   "devDependencies": {
     "rollup": "^3.29.0",

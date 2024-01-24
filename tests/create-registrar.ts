@@ -18,7 +18,7 @@ describe("create-registrar", () => {
     program.provider.connection,
     GOVERNANCE_PROGRAM_ID
   );
-  const realmName = "Test Realm";
+  const realmName = "create-registrar-realm";
   const [realmAddress] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),

@@ -52,31 +52,32 @@ export const deposit = async (
     ],
     program.programId
   );
-try{
-  await program.methods
-    .deposit(receiptNonce, amount, duration)
-    .accounts({
-      payer: depositor.publicKey,
-      owner: depositor.publicKey,
-      from: vaultMintAccount,
-      stakePool: stakePoolKey,
-      vault: vaultKey,
-      stakeMint,
-      destination: stakeMintAccount,
-      stakeDepositReceipt: stakeReceiptKey,
-      tokenProgram: SPL_TOKEN_PROGRAM_ID,
-      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    })
-    .remainingAccounts(
-      rewardVaults.map((rewardVaultKey) => ({
-        pubkey: rewardVaultKey,
-        isWritable: false,
-        isSigner: false,
-      }))
-    )
-    .signers([depositor])
-    .rpc();
-}catch(err)
-{console.log(err);}
+  try {
+    await program.methods
+      .deposit(receiptNonce, amount, duration)
+      .accounts({
+        payer: depositor.publicKey,
+        owner: depositor.publicKey,
+        from: vaultMintAccount,
+        stakePool: stakePoolKey,
+        vault: vaultKey,
+        stakeMint,
+        destination: stakeMintAccount,
+        stakeDepositReceipt: stakeReceiptKey,
+        tokenProgram: SPL_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .remainingAccounts(
+        rewardVaults.map((rewardVaultKey) => ({
+          pubkey: rewardVaultKey,
+          isWritable: false,
+          isSigner: false,
+        }))
+      )
+      .signers([depositor])
+      .rpc();
+  } catch (err) {
+    console.log(err);
+  }
 };

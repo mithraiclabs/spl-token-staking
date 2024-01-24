@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 pub mod errors;
+mod governance;
 pub mod instructions;
 pub mod macros;
 pub mod math;
@@ -9,6 +10,11 @@ pub mod state;
 use crate::instructions::*;
 
 declare_id!("STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB");
+
+// Generate a VoteWeightRecord Anchor wrapper, owned by the current program.
+// VoteWeightRecords are unique in that they are defined by the SPL governance
+// program, but they are actually owned by this program.
+vote_weight_record!(crate::ID);
 
 #[program]
 pub mod spl_token_staking {
@@ -95,5 +101,9 @@ pub mod spl_token_staking {
         registrar_bump: u8,
     ) -> Result<()> {
         create_registrar::handler(ctx, registrar_bump)
+    }
+
+    pub fn create_voter_weight_record<'info>(ctx: Context<CreateVoterWeightRecord>) -> Result<()> {
+        create_voter_weight_record::handler(ctx)
     }
 }
