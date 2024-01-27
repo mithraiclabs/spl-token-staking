@@ -1,6 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 import { SplTokenStaking } from "@mithraic-labs/token-staking";
+import {
+  GOVERNANCE_PROGRAM_SEED,
+  SPL_GOVERNANCE_IDL,
+} from "@mithraic-labs/spl-governance";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 /**
  * Stake with an existing StakePool.
@@ -80,4 +85,77 @@ export const deposit = async (
   } catch (err) {
     console.log(err);
   }
+};
+
+export const createRealm = (
+  program: anchor.Program<typeof SPL_GOVERNANCE_IDL>,
+  realmName: string,
+  realmGoverningTokenMint: anchor.web3.PublicKey,
+  realmAuthority: anchor.web3.PublicKey,
+  voterWeightAddinAddress?: anchor.web3.PublicKey
+) => {
+  const [realmAddress] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
+      Buffer.from(realmName, "utf-8"),
+    ],
+    program.programId
+  );
+  const [communityTokenHoldingAddress] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
+        realmAddress.toBuffer(),
+        realmGoverningTokenMint.toBuffer(),
+      ],
+      program.programId
+    );
+  const [realmConfigAddress] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("realm-config", "utf-8"), realmAddress.toBuffer()],
+    program.programId
+  );
+  return program.methods
+    .createRealm(realmName, {
+      communityTokenConfigArgs: {
+        useVoterWeightAddin: true,
+        useMaxVoterWeightAddin: false,
+        tokenType: { liquid: {} },
+      },
+      councilTokenConfigArgs: {
+        useVoterWeightAddin: false,
+        useMaxVoterWeightAddin: false,
+        tokenType: { liquid: {} },
+      },
+      useCouncilMint: false,
+      minCommunityWeightToCreateGovernance: new anchor.BN(100),
+      communityMintMaxVoteWeightSource: { absolute: [new anchor.BN(5)] },
+    })
+    .accounts({
+      realmAddress,
+      realmAuthority,
+      communityTokenMint: realmGoverningTokenMint,
+      communityTokenHoldingAddress,
+      payer: program.provider.publicKey,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+    .remainingAccounts([
+      {
+        pubkey: realmConfigAddress,
+        isSigner: false,
+        isWritable: true,
+      },
+      // since `communityTokenConfigArgs.useVoterWeightAddin` is true, we must append the program ID
+      ...(voterWeightAddinAddress
+        ? [
+            {
+              pubkey: voterWeightAddinAddress,
+              isSigner: false,
+              isWritable: false,
+            },
+          ]
+        : []),
+    ])
+    .rpc({ skipPreflight: true });
 };

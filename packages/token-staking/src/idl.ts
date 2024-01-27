@@ -83,6 +83,12 @@ export const _SplTokenStakingIDL = {
           name: "maxDuration",
           type: "u64",
         },
+        {
+          name: "registrar",
+          type: {
+            option: "publicKey",
+          },
+        },
       ],
     },
     {
@@ -520,6 +526,13 @@ export const _SplTokenStakingIDL = {
             type: "publicKey",
           },
           {
+            name: "registrar",
+            docs: [
+              "Registrar of the spl-governance realm this StakePool will be used for",
+            ],
+            type: "publicKey",
+          },
+          {
             name: "rewardPools",
             docs: [
               "Array of RewardPools that apply to the stake pool.",
@@ -606,6 +619,11 @@ export const _SplTokenStakingIDL = {
           {
             name: "payer",
             docs: ["Pubkey that paid for the deposit"],
+            type: "publicKey",
+          },
+          {
+            name: "voterWeightRecord",
+            docs: ["VoterWeightRecord this stake belongs to"],
             type: "publicKey",
           },
           {

@@ -7,7 +7,7 @@ import {
   createSplGovernanceProgram,
 } from "@mithraic-labs/spl-governance";
 import { mintToBeStaked } from "./hooks";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createRealm } from "./utils";
 
 describe("create-registrar", () => {
   const program = anchor.workspace
@@ -32,60 +32,14 @@ describe("create-registrar", () => {
   before(async () => {
     const communityTokenMint = mintToBeStaked;
     const realmAuthority = splGovernance.provider.publicKey;
-    const [communityTokenHoldingAddress] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
-          realmAddress.toBuffer(),
-          communityTokenMint.toBuffer(),
-        ],
-        splGovernance.programId
-      );
-    const [realmConfigAddress] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("realm-config", "utf-8"), realmAddress.toBuffer()],
-      splGovernance.programId
-    );
-    await splGovernance.methods
+    await createRealm(
       // @ts-ignore
-      .createRealm(realmName, {
-        communityTokenConfigArgs: {
-          useVoterWeightAddin: true,
-          useMaxVoterWeightAddin: false,
-          tokenType: { liquid: {} },
-        },
-        councilTokenConfigArgs: {
-          useVoterWeightAddin: false,
-          useMaxVoterWeightAddin: false,
-          tokenType: { liquid: {} },
-        },
-        useCouncilMint: false,
-        minCommunityWeightToCreateGovernance: new anchor.BN(100),
-        communityMintMaxVoteWeightSource: { absolute: [new anchor.BN(5)] },
-      })
-      .accounts({
-        realmAddress,
-        realmAuthority,
-        communityTokenMint,
-        communityTokenHoldingAddress,
-        payer: splGovernance.provider.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      })
-      .remainingAccounts([
-        {
-          pubkey: realmConfigAddress,
-          isSigner: false,
-          isWritable: true,
-        },
-        // since `communityTokenConfigArgs.useVoterWeightAddin` is true, we must append the program ID
-        {
-          pubkey: program.programId,
-          isSigner: false,
-          isWritable: false,
-        },
-      ])
-      .rpc();
+      splGovernance,
+      realmName,
+      communityTokenMint,
+      realmAuthority,
+      program.programId
+    );
   });
 
   it("Create Registrar for SPL Governance plugin", async () => {

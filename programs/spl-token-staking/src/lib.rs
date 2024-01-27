@@ -28,8 +28,16 @@ pub mod spl_token_staking {
         max_weight: u64,
         min_duration: u64,
         max_duration: u64,
+        registrar: Option<Pubkey>,
     ) -> Result<()> {
-        initialize_stake_pool::handler(ctx, nonce, max_weight, min_duration, max_duration)
+        initialize_stake_pool::handler(
+            ctx,
+            nonce,
+            max_weight,
+            min_duration,
+            max_duration,
+            registrar,
+        )
     }
 
     /// Add a [RewardPool](state::RewardPool) to an existing [StakePool](state::StakePool).

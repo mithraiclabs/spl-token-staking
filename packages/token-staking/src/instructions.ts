@@ -21,7 +21,8 @@ export const initStakePool = async (
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
   minDuration = new anchor.BN(0),
   maxDuration = new anchor.BN("18446744073709551615"),
-  authority?: anchor.Address
+  authority?: anchor.Address,
+  registrar: anchor.web3.PublicKey | null = null,
 ) => {
   const _authority = authority
     ? new anchor.web3.PublicKey(authority)
@@ -44,7 +45,7 @@ export const initStakePool = async (
     program.programId
   );
   await program.methods
-    .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
+    .initializeStakePool(nonce, maxWeight, minDuration, maxDuration, registrar)
     .accounts({
       payer: program.provider.publicKey,
       authority: _authority,
@@ -284,5 +285,37 @@ export const deposit = async (
   )
     .preInstructions(options.preInstructions)
     .postInstructions(options.postInstructions)
+    .rpc({ skipPreflight: true });
+};
+
+/* Governance plugin related instructions */
+export const createRegistrar = async (
+  program: anchor.Program<SplTokenStaking>,
+  realmAddress: anchor.Address,
+  realmGoverningTokenMint: anchor.Address,
+  governanceProgramId: anchor.Address,
+  realmAuthority: anchor.Address
+) => {
+  const [registrarKey, registrarBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        new anchor.web3.PublicKey(realmAddress).toBuffer(),
+        new anchor.web3.PublicKey(realmGoverningTokenMint).toBuffer(),
+        Buffer.from("registrar", "utf-8"),
+      ],
+      program.programId
+    );
+  await program.methods
+    .createRegistrar(registrarBump)
+    .accounts({
+      payer: program.provider.publicKey,
+      registrar: registrarKey,
+      realm: realmAddress,
+      governanceProgramId,
+      realmGoverningTokenMint,
+      realmAuthority,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
     .rpc({ skipPreflight: true });
 };
