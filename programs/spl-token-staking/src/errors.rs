@@ -30,4 +30,8 @@ pub enum ErrorCode {
   DurationTooShort, // 6012
   #[msg("Realm Authority is invalid")]
   InvalidRealmAuthority, // 6013
+  #[msg("Registrar is invalid")]
+  InvalidRegistrar, // 6014
+  #[msg("Registrar must match StakePool registrar")]
+  StakePoolRegistrarMismatch, // 6015
 }

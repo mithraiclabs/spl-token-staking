@@ -1,8 +1,8 @@
+use anchor_lang::prelude::*;
 use std::mem::size_of;
 
-use anchor_lang::prelude::*;
-
 use crate::{
+    errors::ErrorCode,
     state::{Registrar, StakePool},
     VoterWeightRecord,
 };
@@ -18,7 +18,7 @@ pub struct CreateVoterWeightRecord<'info> {
     pub owner: UncheckedAccount<'info>,
 
     /// Registrar for the applicable realm
-    pub registrar: AccountLoader<'info, Registrar>,
+    pub registrar: Option<AccountLoader<'info, Registrar>>,
 
     /// StakePool the VoterWeightRecord will be associated with.
     pub stake_pool: AccountLoader<'info, StakePool>,
@@ -26,7 +26,6 @@ pub struct CreateVoterWeightRecord<'info> {
     #[account(
       init,
       seeds = [
-        registrar.key().as_ref(),
         stake_pool.key().as_ref(),
         owner.key().as_ref(),
         b"voterWeightRecord".as_ref()
@@ -43,9 +42,26 @@ pub struct CreateVoterWeightRecord<'info> {
 
 pub fn handler(ctx: Context<CreateVoterWeightRecord>) -> Result<()> {
     let voter_weight_record = &mut ctx.accounts.voter_weight_record;
-    let registrar = ctx.accounts.registrar.load()?;
-    voter_weight_record.realm = registrar.realm;
-    voter_weight_record.governing_token_mint = registrar.realm_governing_token_mint;
+    let stake_pool = ctx.accounts.stake_pool.load()?;
+
+    if ctx.accounts.registrar.is_some() {
+        // A registrar is being used, therefore we include the SPL-Governance
+        // related properties of the VoterWeighRecord
+        let registrar_loader = ctx.accounts.registrar.clone().unwrap();
+
+        if registrar_loader.key() != stake_pool.registrar {
+            return err!(ErrorCode::InvalidRegistrar);
+        }
+
+        let registrar = registrar_loader.load()?;
+        voter_weight_record.realm = registrar.realm;
+        voter_weight_record.governing_token_mint = registrar.realm_governing_token_mint;
+    } else if stake_pool.registrar != Pubkey::default() {
+        // This check is necessary to prevent VoterWeightRecords without Realm info after
+        // the StakePool has been setup for SPL-Governance.
+        return err!(ErrorCode::StakePoolRegistrarMismatch);
+    }
+
     voter_weight_record.governing_token_owner = ctx.accounts.owner.key();
 
     Ok(())

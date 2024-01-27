@@ -13,6 +13,7 @@ import { SplTokenStaking } from "./idl";
  * @param minDuration
  * @param maxDuration
  * @param authority - defaults to `program.provider.publicKey`
+ * @param registar - Registrar key if this StakePool uses SPL-Governance
  */
 export const initStakePool = async (
   program: anchor.Program<SplTokenStaking>,
