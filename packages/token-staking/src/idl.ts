@@ -407,6 +407,13 @@ export const _SplTokenStakingIDL = {
         kind: "struct",
         fields: [
           {
+            name: "creator",
+            docs: [
+              "The original creator of the StakePool. Necessary for signer seeds",
+            ],
+            type: "publicKey",
+          },
+          {
             name: "authority",
             docs: ["Pubkey that can make updates to StakePool"],
             type: "publicKey",
@@ -501,7 +508,7 @@ export const _SplTokenStakingIDL = {
           {
             name: "reserved0",
             type: {
-              array: ["u8", 8],
+              array: ["u8", 256],
             },
           },
         ],
