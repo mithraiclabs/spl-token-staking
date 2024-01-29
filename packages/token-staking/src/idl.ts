@@ -207,6 +207,16 @@ export const _SplTokenStakingIDL = {
           isSigner: false,
         },
         {
+          name: "voterWeightRecord",
+          isMut: true,
+          isSigner: false,
+          docs: [
+            "VoterWeightRecord which caches the total weighted stake for the owner.",
+            "In order to allow StakePools to add Governance in the future, this",
+            "is required even when the StakePool does not have a `Registrar`.",
+          ],
+        },
+        {
           name: "destination",
           isMut: true,
           isSigner: false,
@@ -465,6 +475,7 @@ export const _SplTokenStakingIDL = {
           name: "registrar",
           isMut: false,
           isSigner: false,
+          isOptional: true,
           docs: ["Registrar for the applicable realm"],
         },
         {
@@ -801,6 +812,16 @@ export const _SplTokenStakingIDL = {
       code: 6013,
       name: "InvalidRealmAuthority",
       msg: "Realm Authority is invalid",
+    },
+    {
+      code: 6014,
+      name: "InvalidRegistrar",
+      msg: "Registrar is invalid",
+    },
+    {
+      code: 6015,
+      name: "StakePoolRegistrarMismatch",
+      msg: "Registrar must match StakePool registrar",
     },
   ],
 } as const;

@@ -225,7 +225,9 @@ export const createDepositorSplAccounts = async (
     createStakeMintAccountIx
   );
   // add reward pool to the initialized stake pool
-  await program.provider.sendAndConfirm(createStakeMintAccountTx);
+  await program.provider.sendAndConfirm(createStakeMintAccountTx, undefined, {
+    skipPreflight: true,
+  });
 
   return depositor;
 };

@@ -83,6 +83,7 @@ pub fn handler(
     let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
     stake_pool.authority = ctx.accounts.authority.key();
     if registrar.is_some() {
+        // TODO maybe need a check that it's a proper registrar
         stake_pool.registrar = registrar.unwrap();
     }
     stake_pool.mint = ctx.accounts.mint.key();

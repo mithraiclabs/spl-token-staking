@@ -26,8 +26,6 @@ describe("create-registrar", () => {
     ],
     splGovernance.programId
   );
-  // const program = anchor.workspace
-  // .SplTokenStaking as anchor.Program<SplTokenStaking>;
 
   before(async () => {
     const communityTokenMint = mintToBeStaked;

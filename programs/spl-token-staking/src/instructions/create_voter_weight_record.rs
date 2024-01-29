@@ -3,8 +3,7 @@ use std::mem::size_of;
 
 use crate::{
     errors::ErrorCode,
-    state::{Registrar, StakePool},
-    VoterWeightRecord,
+    state::{Registrar, StakePool, VoterWeightRecord},
 };
 
 #[derive(Accounts)]

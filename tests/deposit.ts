@@ -19,17 +19,30 @@ import {
   SplTokenStaking,
   addRewardPool,
   calculateStakeWeight,
+  createRegistrar,
   getDigitShift,
   getNextUnusedStakeReceiptNonce,
   initStakePool,
 } from "@mithraic-labs/token-staking";
 import { assertBNEqual, assertKeysEqual } from "./genericTests";
+import {
+  GOVERNANCE_PROGRAM_ID,
+  GOVERNANCE_PROGRAM_SEED,
+  createSplGovernanceProgram,
+} from "@mithraic-labs/spl-governance";
+import { createRealm } from "./utils";
 
 const scaleFactorBN = new anchor.BN(SCALE_FACTOR_BASE.toString());
 
-describe("deposit", () => {
+describe.only("deposit", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
+  const splGovernance = createSplGovernanceProgram(
+    // @ts-ignore
+    program._provider.wallet,
+    program.provider.connection,
+    GOVERNANCE_PROGRAM_ID
+  );
   const tokenProgram = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
   const depositor = new anchor.web3.Keypair();
 
@@ -80,8 +93,50 @@ describe("deposit", () => {
     BigInt(maxWeight.toString()),
     TEST_MINT_DECIMALS
   );
+  const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      program.provider.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
+  );
+  const realmName = "create-registrar-realm";
+  const [realmAddress] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
+      Buffer.from(realmName, "utf-8"),
+    ],
+    splGovernance.programId
+  );
+  const communityTokenMint = mintToBeStaked;
+  const [registrarKey, registrarBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        realmAddress.toBuffer(),
+        communityTokenMint.toBuffer(),
+        Buffer.from("registrar", "utf-8"),
+      ],
+      program.programId
+    );
+  const realmAuthority = splGovernance.provider.publicKey;
 
   before(async () => {
+    await createRealm(
+      // @ts-ignore
+      splGovernance,
+      realmName,
+      communityTokenMint,
+      realmAuthority,
+      program.programId
+    );
+    await createRegistrar(
+      program,
+      realmAddress,
+      mintToBeStaked,
+      GOVERNANCE_PROGRAM_ID,
+      program.provider.publicKey
+    );
     // set up depositor account and stake pool account
     await Promise.all([
       createDepositorSplAccounts(program, depositor, stakePoolNonce),
@@ -91,14 +146,31 @@ describe("deposit", () => {
         stakePoolNonce,
         maxWeight,
         minDuration,
-        maxDuration
+        maxDuration,
+        undefined,
+        registrarKey
       ),
     ]);
+
     // add reward pool to the initialized stake pool
-    await addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1);
+    await Promise.all([
+      addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1),
+      // TODO
+      program.methods
+        .createVoterWeightRecord()
+        .accounts({
+          owner: program.provider.publicKey,
+          registrar: registrarKey,
+          stakePool: stakePoolKey,
+          voterWeightRecord: voterWeightRecordKey,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc(),
+    ]);
   });
 
-  it("First Deposit (5) successful", async () => {
+  it.only("First Deposit (5) successful", async () => {
     const nextNonce = await getNextUnusedStakeReceiptNonce(
       program.provider.connection,
       program.programId,
@@ -127,6 +199,7 @@ describe("deposit", () => {
         stakePool: stakePoolKey,
         vault: vaultKey,
         stakeMint,
+        voterWeightRecord: voterWeightRecordKey,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,
         tokenProgram: TOKEN_PROGRAM_ID,

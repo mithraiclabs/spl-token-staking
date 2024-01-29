@@ -11,11 +11,6 @@ use crate::instructions::*;
 
 declare_id!("STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB");
 
-// Generate a VoteWeightRecord Anchor wrapper, owned by the current program.
-// VoteWeightRecords are unique in that they are defined by the SPL governance
-// program, but they are actually owned by this program.
-vote_weight_record!(crate::ID);
-
 #[program]
 pub mod spl_token_staking {
     use super::*;

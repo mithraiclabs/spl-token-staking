@@ -5,7 +5,12 @@ use bytemuck::{Pod, Zeroable};
 use core::primitive;
 use jet_proc_macros::assert_size;
 
-use crate::{errors::ErrorCode, math::U192};
+use crate::{errors::ErrorCode, math::U192, vote_weight_record};
+
+// Generate a VoteWeightRecord Anchor wrapper, owned by the current program.
+// VoteWeightRecords are unique in that they are defined by the SPL governance
+// program, but they are actually owned by this program.
+vote_weight_record!(crate::ID);
 
 // REVIEW: What's the theoretical limit of Reward pools? What's the limiting factor (e.g. CU)?
 //  Wondering because a single StakePool could only ever provide 5 different assets as rewards.
@@ -344,7 +349,6 @@ impl StakeDepositReceipt {
     }
 }
 
-
 // Governance addin related state
 
 /// Instance of a voting rights distributor.
@@ -476,5 +480,4 @@ mod tests {
         let max_duration = stake_pool.max_duration;
         assert_eq!(stake_pool.get_stake_weight(max_duration + 1), base_weight);
     }
-
 }

@@ -3,8 +3,7 @@ use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use crate::errors::ErrorCode;
 use crate::stake_pool_signer_seeds;
-use crate::state::{StakeDepositReceipt, StakePool};
-use crate::state::u128;
+use crate::state::{u128, StakeDepositReceipt, StakePool, VoterWeightRecord};
 
 #[derive(Accounts)]
 #[instruction(nonce: u32)]
@@ -12,7 +11,7 @@ pub struct Deposit<'info> {
     // Payer to actually stake the mint tokens
     #[account(mut)]
     pub payer: Signer<'info>,
-    
+
     /// Owner of the StakeDepositReceipt, which may differ
     /// from the account staking.
     /// CHECK: No check needed since this account will own the StakeReceipt.
@@ -28,6 +27,12 @@ pub struct Deposit<'info> {
 
     #[account(mut)]
     pub stake_mint: Account<'info, Mint>,
+
+    /// VoterWeightRecord which caches the total weighted stake for the owner.
+    /// In order to allow StakePools to add Governance in the future, this
+    /// is required even when the StakePool does not have a `Registrar`.
+    #[account(mut)]
+    pub voter_weight_record: Account<'info, VoterWeightRecord>,
 
     /// Token account the StakePool token will be transfered to
     #[account(
