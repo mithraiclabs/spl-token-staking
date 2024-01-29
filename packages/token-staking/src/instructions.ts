@@ -138,7 +138,6 @@ export const createStakeBuilder = (
   receiptNonce: number,
   rewardVaults: anchor.web3.PublicKey[] = []
 ) => {
-  const pubkey = program.provider.publicKey ?? anchor.web3.PublicKey.default;
   const _stakePoolKey =
     typeof stakePoolKey === "string"
       ? new anchor.web3.PublicKey(stakePoolKey)
@@ -153,7 +152,7 @@ export const createStakeBuilder = (
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
-      pubkey.toBuffer(),
+      owner.toBuffer(),
       _stakePoolKey.toBuffer(),
       new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
       Buffer.from("stakeDepositReceipt", "utf-8"),
