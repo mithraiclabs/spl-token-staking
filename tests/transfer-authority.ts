@@ -5,7 +5,7 @@ import { mintToBeStaked } from "./hooks";
 import { initStakePool } from "@mithraic-labs/token-staking";
 import { assertKeysEqual } from "./genericTests";
 
-describe.only("transfer-authority", () => {
+describe("transfer-authority", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const stakePoolNonce = 8;
@@ -24,7 +24,7 @@ describe.only("transfer-authority", () => {
     await initStakePool(program, mintToBeStaked, stakePoolNonce);
   });
 
-  it.only("Transfer StakePool authority", async () => {
+  it("Transfer StakePool authority", async () => {
     const stakePoolBefore = await program.account.stakePool.fetch(stakePoolKey);
     assertKeysEqual(stakePoolBefore.authority, program.provider.publicKey);
     await program.methods
@@ -39,7 +39,7 @@ describe.only("transfer-authority", () => {
     assertKeysEqual(stakePool.authority, newAuthority.publicKey);
   });
 
-  it.only("Non-authority cannot transfer StakePool authority", async () => {
+  it("Non-authority cannot transfer StakePool authority", async () => {
     const badAuthority = new anchor.web3.Keypair();
     const stakePoolBefore = await program.account.stakePool.fetch(stakePoolKey);
     assertKeysEqual(stakePoolBefore.authority, newAuthority.publicKey);
