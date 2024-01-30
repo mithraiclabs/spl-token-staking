@@ -7,7 +7,7 @@ export const DAY_IN_SECONDS = 24 * 60 * 60;
 export const YEAR_IN_SECONDS = 365 * DAY_IN_SECONDS;
 
 export const SPL_TOKEN_STAKING_ID =
-  "STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB";
+  "STAKEGztX7S1MUHxcQHieZhELCntb9Ys9BgUbeEtMu1";
 
 /**
  * @deprecated
