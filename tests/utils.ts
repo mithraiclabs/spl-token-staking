@@ -13,7 +13,6 @@ import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
  * @param stakePoolNonce
  * @param depositor
  * @param vaultMintAccount
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -25,7 +24,6 @@ export const deposit = async (
   stakePoolMint: anchor.Address,
   depositor: anchor.web3.Keypair,
   vaultMintAccount: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -43,10 +41,6 @@ export const deposit = async (
   );
   const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-    program.programId
-  );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
     program.programId
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -68,8 +62,6 @@ export const deposit = async (
         stakePool: stakePoolKey,
         vault: vaultKey,
         voterWeightRecord,
-        stakeMint,
-        destination: stakeMintAccount,
         stakeDepositReceipt: stakeReceiptKey,
         tokenProgram: SPL_TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,

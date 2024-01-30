@@ -39,12 +39,6 @@ export const _SplTokenStakingIDL = {
           isSigner: false,
         },
         {
-          name: "stakeMint",
-          isMut: true,
-          isSigner: false,
-          docs: ["An SPL token Mint for the effective stake weight token"],
-        },
-        {
           name: "vault",
           isMut: true,
           isSigner: false,
@@ -192,7 +186,7 @@ export const _SplTokenStakingIDL = {
           isMut: true,
           isSigner: false,
           docs: [
-            "Token Account to transfer stake_mint from, to be deposited into the vault",
+            "Token Account to transfer StakePool's `mint` token from, to be deposited into the vault",
           ],
         },
         {
@@ -200,11 +194,6 @@ export const _SplTokenStakingIDL = {
           isMut: true,
           isSigner: false,
           docs: ["Vault of the StakePool token will be transfer to"],
-        },
-        {
-          name: "stakeMint",
-          isMut: true,
-          isSigner: false,
         },
         {
           name: "voterWeightRecord",
@@ -215,12 +204,6 @@ export const _SplTokenStakingIDL = {
             "In order to allow StakePools to add Governance in the future, this",
             "is required even when the StakePool does not have a `Registrar`.",
           ],
-        },
-        {
-          name: "destination",
-          isMut: true,
-          isSigner: false,
-          docs: ["Token account the StakePool token will be transfered to"],
         },
         {
           name: "stakePool",
@@ -365,18 +348,9 @@ export const _SplTokenStakingIDL = {
           docs: ["Vault of the StakePool token will be transferred from"],
         },
         {
-          name: "stakeMint",
+          name: "voterWeightRecord",
           isMut: true,
           isSigner: false,
-          docs: ["stake_mint of StakePool that will be burned"],
-        },
-        {
-          name: "from",
-          isMut: true,
-          isSigner: false,
-          docs: [
-            "Token Account holding weighted stake representation token to burn",
-          ],
         },
         {
           name: "destination",
@@ -532,11 +506,6 @@ export const _SplTokenStakingIDL = {
             type: "publicKey",
           },
           {
-            name: "stakeMint",
-            docs: ["Mint of the token representing effective stake"],
-            type: "publicKey",
-          },
-          {
             name: "registrar",
             docs: [
               "Registrar of the spl-governance realm this StakePool will be used for",
@@ -599,7 +568,7 @@ export const _SplTokenStakingIDL = {
           },
           {
             name: "bumpSeed",
-            docs: ["Bump seed for stake_mint"],
+            docs: ["Bump seed for stake_pool"],
             type: "u8",
           },
           {
@@ -785,41 +754,36 @@ export const _SplTokenStakingIDL = {
     },
     {
       code: 6008,
-      name: "InvalidStakeMint",
-      msg: "Invalid stake mint",
-    },
-    {
-      code: 6009,
       name: "StakeStillLocked",
       msg: "Stake is still locked",
     },
     {
-      code: 6010,
+      code: 6009,
       name: "InvalidStakePoolDuration",
       msg: "Max duration must be great than min",
     },
     {
-      code: 6011,
+      code: 6010,
       name: "InvalidStakePoolWeight",
       msg: "Max weight must be great than min",
     },
     {
-      code: 6012,
+      code: 6011,
       name: "DurationTooShort",
       msg: "Duration too short",
     },
     {
-      code: 6013,
+      code: 6012,
       name: "InvalidRealmAuthority",
       msg: "Realm Authority is invalid",
     },
     {
-      code: 6014,
+      code: 6013,
       name: "InvalidRegistrar",
       msg: "Registrar is invalid",
     },
     {
-      code: 6015,
+      code: 6014,
       name: "StakePoolRegistrarMismatch",
       msg: "Registrar must match StakePool registrar",
     },

@@ -90,7 +90,7 @@ impl RewardPool {
     }
 }
 
-#[assert_size(864)]
+#[assert_size(832)]
 #[account(zero_copy)]
 #[repr(C)]
 pub struct StakePool {
@@ -103,8 +103,6 @@ pub struct StakePool {
     pub vault: Pubkey,
     /** Mint of the token being staked */
     pub mint: Pubkey,
-    /** Mint of the token representing effective stake */
-    pub stake_mint: Pubkey,
     /** Registrar of the spl-governance realm this StakePool will be used for */
     pub registrar: Pubkey,
     /// Array of RewardPools that apply to the stake pool.
@@ -126,7 +124,7 @@ pub struct StakePool {
     pub max_duration: u64,
     /** Nonce to derive multiple stake pools from same mint */
     pub nonce: u8,
-    /** Bump seed for stake_mint */
+    /** Bump seed for stake_pool */
     pub bump_seed: u8,
     // padding to next 8-byte
     _padding0: [u8; 6],

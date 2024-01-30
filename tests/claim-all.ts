@@ -40,10 +40,6 @@ describe("claim-all", () => {
     ],
     program.programId
   );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
   const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       stakePoolKey.toBuffer(),
@@ -54,10 +50,6 @@ describe("claim-all", () => {
   );
   const mintToBeStakedAccountKey = getAssociatedTokenAddressSync(
     mintToBeStaked,
-    depositor1.publicKey
-  );
-  const stakeMintAccountKey = getAssociatedTokenAddressSync(
-    stakeMint,
     depositor1.publicKey
   );
   const depositerReward1AccKey = getAssociatedTokenAddressSync(
@@ -134,7 +126,6 @@ describe("claim-all", () => {
       mintToBeStaked,
       depositor1,
       mintToBeStakedAccountKey,
-      stakeMintAccountKey,
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
       receiptNonce,
@@ -221,10 +212,6 @@ describe("claim-all", () => {
       mintToBeStaked,
       depositor2.publicKey
     );
-    const stakeMintAccountKey2 = getAssociatedTokenAddressSync(
-      stakeMint,
-      depositor2.publicKey
-    );
     const depositerReward1AccountKey2 = getAssociatedTokenAddressSync(
       rewardMint1,
       depositor2.publicKey
@@ -240,7 +227,6 @@ describe("claim-all", () => {
       mintToBeStaked,
       depositor2,
       mintToBeStakedAccountKey2,
-      stakeMintAccountKey2,
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
       receipt2Nonce,

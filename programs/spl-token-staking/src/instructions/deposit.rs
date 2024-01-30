@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::errors::ErrorCode;
-use crate::stake_pool_signer_seeds;
 use crate::state::{u128, StakeDepositReceipt, StakePool, VoterWeightRecord};
 
 #[derive(Accounts)]
@@ -17,16 +16,13 @@ pub struct Deposit<'info> {
     /// CHECK: No check needed since this account will own the StakeReceipt.
     pub owner: UncheckedAccount<'info>,
 
-    /// Token Account to transfer stake_mint from, to be deposited into the vault
+    /// Token Account to transfer StakePool's `mint` token from, to be deposited into the vault
     #[account(mut)]
     pub from: Account<'info, TokenAccount>,
 
     /// Vault of the StakePool token will be transfer to
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub stake_mint: Account<'info, Mint>,
 
     /// VoterWeightRecord which caches the total weighted stake for the owner.
     /// In order to allow StakePools to add Governance in the future, this
@@ -45,18 +41,10 @@ pub struct Deposit<'info> {
     )]
     pub voter_weight_record: Account<'info, VoterWeightRecord>,
 
-    /// Token account the StakePool token will be transfered to
-    #[account(
-      mut,
-      has_one = owner @ ErrorCode::InvalidAuthority
-    )]
-    pub destination: Account<'info, TokenAccount>,
-
     /// StakePool owning the vault that will receive the deposit
     #[account(
       mut,
       has_one = vault @ ErrorCode::InvalidStakePoolVault,
-      has_one = stake_mint @ ErrorCode::InvalidAuthority,
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
 
@@ -80,7 +68,7 @@ pub struct Deposit<'info> {
 }
 
 impl<'info> Deposit<'info> {
-    /// Transfer the stake_mint from the payer's address to the StakePool vault.
+    /// Transfer the StakePool's `mint` from the payer's address to the StakePool vault.
     pub fn transfer_from_user_to_stake_vault(&self, amount: u64) -> Result<()> {
         let cpi_ctx = CpiContext::new(
             self.token_program.to_account_info(),
@@ -91,22 +79,6 @@ impl<'info> Deposit<'info> {
             },
         );
         token::transfer(cpi_ctx, amount)
-    }
-
-    pub fn mint_staked_token_to_user(&self, effective_amount: u64) -> Result<()> {
-        let stake_pool = self.stake_pool.load()?;
-        let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
-        let cpi_ctx = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            MintTo {
-                mint: self.stake_mint.to_account_info(),
-                to: self.destination.to_account_info(),
-                authority: self.stake_pool.to_account_info(),
-            },
-            signer_seeds,
-        );
-
-        token::mint_to(cpi_ctx, effective_amount)
     }
 }
 
@@ -162,7 +134,5 @@ pub fn handler<'info>(
         .voter_weight
         .checked_add(effect_amount_staked_tokens)
         .unwrap();
-    ctx.accounts
-        .mint_staked_token_to_user(effect_amount_staked_tokens)?;
     Ok(())
 }

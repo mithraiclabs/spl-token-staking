@@ -32,18 +32,8 @@ describe("zero-duration-pool", () => {
     [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
     program.programId
   );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
   const mintToBeStakedAccount = getAssociatedTokenAddressSync(
     mintToBeStaked,
-    depositor.publicKey,
-    false,
-    TOKEN_PROGRAM_ID
-  );
-  const stakeMintAccountKey = getAssociatedTokenAddressSync(
-    stakeMint,
     depositor.publicKey,
     false,
     TOKEN_PROGRAM_ID
@@ -80,7 +70,7 @@ describe("zero-duration-pool", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .rpc()
+      .rpc();
   });
 
   it("should successfully deposit to pool with 0 min & max duration", async () => {
@@ -101,11 +91,9 @@ describe("zero-duration-pool", () => {
       program.programId
     );
 
-    const [mintToBeStakedAccountBefore, stakeMintAccountBefore] =
-      await Promise.all([
-        tokenProgram.account.account.fetch(mintToBeStakedAccount),
-        tokenProgram.account.account.fetch(stakeMintAccountKey),
-      ]);
+    const [mintToBeStakedAccountBefore] = await Promise.all([
+      tokenProgram.account.account.fetch(mintToBeStakedAccount),
+    ]);
 
     await program.methods
       .deposit(nextNonce, depositAmount, new anchor.BN(0))
@@ -116,8 +104,6 @@ describe("zero-duration-pool", () => {
         stakePool: stakePoolKey,
         vault: vaultKey,
         voterWeightRecord: voterWeightRecordKey,
-        stakeMint,
-        destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -126,17 +112,11 @@ describe("zero-duration-pool", () => {
       .signers([depositor])
       .rpc({ skipPreflight: true });
 
-    const [mintToBeStakedAccountAfter, stakeMintAccountAfter] =
-      await Promise.all([
-        tokenProgram.account.account.fetch(mintToBeStakedAccount),
-        tokenProgram.account.account.fetch(stakeMintAccountKey),
-      ]);
+    const [mintToBeStakedAccountAfter] = await Promise.all([
+      tokenProgram.account.account.fetch(mintToBeStakedAccount),
+    ]);
     assertBNEqual(
       mintToBeStakedAccountBefore.amount.sub(mintToBeStakedAccountAfter.amount),
-      depositAmount
-    );
-    assertBNEqual(
-      stakeMintAccountAfter.amount.sub(stakeMintAccountBefore.amount),
       depositAmount
     );
   });

@@ -174,16 +174,6 @@ export const createDepositorSplAccounts = async (
     ],
     program.programId
   );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
-  const stakeMintAccountKey = getAssociatedTokenAddressSync(
-    stakeMint,
-    depositor.publicKey,
-    false,
-    TOKEN_PROGRAM_ID
-  );
   const mintToBeStakedAccount = getAssociatedTokenAddressSync(
     mintStake,
     depositor.publicKey,
@@ -197,7 +187,7 @@ export const createDepositorSplAccounts = async (
     mintStake,
     TOKEN_PROGRAM_ID
   );
-  // mint 10 stakeMint to provider wallet
+  // mint 10 of StakePool's mint to provider wallet
   const mintIx = createMintToInstruction(
     mintStake,
     mintToBeStakedAccount,
@@ -209,25 +199,11 @@ export const createDepositorSplAccounts = async (
   const mintTx = new anchor.web3.Transaction()
     .add(createMintToBeStakedAccountIx)
     .add(mintIx);
-  // set up depositor account and stake pool account
+  // set up depositor account
   await Promise.all([
     airdropSol(program.provider.connection, depositor.publicKey, 2),
     program.provider.sendAndConfirm(mintTx),
   ]);
-  const createStakeMintAccountIx = createAssociatedTokenAccountInstruction(
-    program.provider.publicKey,
-    stakeMintAccountKey,
-    depositor.publicKey,
-    stakeMint,
-    TOKEN_PROGRAM_ID
-  );
-  const createStakeMintAccountTx = new anchor.web3.Transaction().add(
-    createStakeMintAccountIx
-  );
-  // add reward pool to the initialized stake pool
-  await program.provider.sendAndConfirm(createStakeMintAccountTx, undefined, {
-    skipPreflight: true,
-  });
 
   return depositor;
 };

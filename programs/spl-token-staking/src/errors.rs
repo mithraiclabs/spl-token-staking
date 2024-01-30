@@ -18,20 +18,18 @@ pub enum ErrorCode {
   InvalidStakePool, // 6006
   #[msg("Math precision error")]
   PrecisionMath, // 6007
-  #[msg("Invalid stake mint")]
-  InvalidStakeMint, // 6008
   #[msg("Stake is still locked")]
-  StakeStillLocked, // 6009
+  StakeStillLocked, // 6008
   #[msg("Max duration must be great than min")]
-  InvalidStakePoolDuration, // 6010
+  InvalidStakePoolDuration, // 6009
   #[msg("Max weight must be great than min")]
-  InvalidStakePoolWeight, // 6011
+  InvalidStakePoolWeight, // 6010
   #[msg("Duration too short")]
-  DurationTooShort, // 6012
+  DurationTooShort, // 6011
   #[msg("Realm Authority is invalid")]
-  InvalidRealmAuthority, // 6013
+  InvalidRealmAuthority, // 6012
   #[msg("Registrar is invalid")]
-  InvalidRegistrar, // 6014
+  InvalidRegistrar, // 6013
   #[msg("Registrar must match StakePool registrar")]
-  StakePoolRegistrarMismatch, // 6015
+  StakePoolRegistrarMismatch, // 6014
 }

@@ -3,7 +3,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::{
     errors::ErrorCode,
-    state::{get_digit_shift_by_max_scalar, StakePool, SCALE_FACTOR_BASE},
+    state::{StakePool, SCALE_FACTOR_BASE},
 };
 
 #[derive(Accounts)]
@@ -38,17 +38,6 @@ pub struct InitializeStakePool<'info> {
       space = 8 + StakePool::LEN,
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
-
-    /// An SPL token Mint for the effective stake weight token
-    #[account(
-      init,
-      seeds = [&stake_pool.key().to_bytes()[..], b"stakeMint"],
-      bump,
-      payer = payer,
-      mint::decimals = mint.decimals.checked_sub(get_digit_shift_by_max_scalar(max_weight)).unwrap_or_default(),
-      mint::authority = stake_pool,
-    )]
-    pub stake_mint: Account<'info, Mint>,
 
     /// An SPL token Account for staging A tokens
     #[account(
@@ -87,7 +76,6 @@ pub fn handler(
         stake_pool.registrar = registrar.unwrap();
     }
     stake_pool.mint = ctx.accounts.mint.key();
-    stake_pool.stake_mint = ctx.accounts.stake_mint.key();
     stake_pool.vault = ctx.accounts.vault.key();
     stake_pool.base_weight = SCALE_FACTOR_BASE;
     stake_pool.max_weight = max_weight;

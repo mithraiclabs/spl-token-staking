@@ -37,10 +37,6 @@ export const initStakePool = async (
     ],
     program.programId
   );
-  const [stakeMintKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
   const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
     program.programId
@@ -51,7 +47,6 @@ export const initStakePool = async (
       payer: program.provider.publicKey,
       authority: _authority,
       stakePool: stakePoolKey,
-      stakeMint: stakeMintKey,
       mint,
       vault: vaultKey,
       tokenProgram: SPL_TOKEN_PROGRAM_ID,
@@ -121,7 +116,6 @@ export const addRewardPool = async (
  * @param owner
  * @param stakePoolKey
  * @param from
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -134,7 +128,6 @@ export const createStakeBuilder = (
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
   from: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -147,10 +140,6 @@ export const createStakeBuilder = (
       : stakePoolKey;
   const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [_stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-    program.programId
-  );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [_stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
     program.programId
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -171,8 +160,6 @@ export const createStakeBuilder = (
       from,
       stakePool: stakePoolKey,
       vault: vaultKey,
-      stakeMint,
-      destination: stakeMintAccount,
       stakeDepositReceipt: stakeReceiptKey,
       tokenProgram: SPL_TOKEN_PROGRAM_ID,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -193,7 +180,6 @@ export const createStakeBuilder = (
  * @param owner
  * @param stakePoolKey
  * @param from
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -206,7 +192,6 @@ export const createStakeInstruction = async (
   owner: anchor.web3.PublicKey,
   stakePoolkey: anchor.Address,
   from: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -218,7 +203,6 @@ export const createStakeInstruction = async (
     owner,
     stakePoolkey,
     from,
-    stakeMintAccount,
     amount,
     duration,
     receiptNonce,
@@ -235,7 +219,6 @@ export const createStakeInstruction = async (
  * @param stakePoolMint
  * @param stakePoolAuthority
  * @param from
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -250,7 +233,6 @@ export const deposit = async (
   stakePoolMint: anchor.Address,
   stakePoolAuthority: anchor.Address,
   from: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -278,7 +260,6 @@ export const deposit = async (
     owner,
     stakePoolKey,
     from,
-    stakeMintAccount,
     amount,
     duration,
     receiptNonce,
