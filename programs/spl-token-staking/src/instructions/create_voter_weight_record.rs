@@ -61,6 +61,8 @@ pub fn handler(ctx: Context<CreateVoterWeightRecord>) -> Result<()> {
         return err!(ErrorCode::StakePoolRegistrarMismatch);
     }
 
+    voter_weight_record.account_discriminator =
+        spl_governance_addin_api::voter_weight::VoterWeightRecord::ACCOUNT_DISCRIMINATOR;
     voter_weight_record.governing_token_owner = ctx.accounts.owner.key();
 
     Ok(())

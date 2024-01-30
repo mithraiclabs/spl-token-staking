@@ -48,6 +48,14 @@ describe("zero-duration-pool", () => {
     false,
     TOKEN_PROGRAM_ID
   );
+  const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      depositor.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
+  );
 
   before(async () => {
     // set up depositor account and stake pool account
@@ -62,6 +70,17 @@ describe("zero-duration-pool", () => {
         new anchor.BN(0)
       ),
     ]);
+    await program.methods
+      .createVoterWeightRecord()
+      .accounts({
+        owner: depositor.publicKey,
+        registrar: null,
+        stakePool: stakePoolKey,
+        voterWeightRecord: voterWeightRecordKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc()
   });
 
   it("should successfully deposit to pool with 0 min & max duration", async () => {
@@ -96,6 +115,7 @@ describe("zero-duration-pool", () => {
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeMint,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,

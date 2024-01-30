@@ -31,7 +31,18 @@ pub struct Deposit<'info> {
     /// VoterWeightRecord which caches the total weighted stake for the owner.
     /// In order to allow StakePools to add Governance in the future, this
     /// is required even when the StakePool does not have a `Registrar`.
-    #[account(mut)]
+    #[account(
+        mut,
+        // Must enforce the VWR and StakeReceipt owner will be the same. This enforces VWR as an accumulator for the
+        // owner's total stake weight for the stake_pool.
+        seeds = [
+            stake_pool.key().as_ref(),
+            owner.key().as_ref(),
+            b"voterWeightRecord".as_ref()
+        ],
+        bump,
+        constraint = voter_weight_record.governing_token_owner == owner.key() @ ErrorCode::InvalidOwner
+    )]
     pub voter_weight_record: Account<'info, VoterWeightRecord>,
 
     /// Token account the StakePool token will be transfered to
@@ -145,6 +156,12 @@ pub fn handler<'info>(
         ctx.accounts.stake_deposit_receipt.effective_stake_u128(),
         stake_pool.max_weight,
     );
+    // Increment VoterWeightRecord to cache the total amount of weighted stake.
+    let voter_weight_record = &mut ctx.accounts.voter_weight_record;
+    voter_weight_record.voter_weight = voter_weight_record
+        .voter_weight
+        .checked_add(effect_amount_staked_tokens)
+        .unwrap();
     ctx.accounts
         .mint_staked_token_to_user(effect_amount_staked_tokens)?;
     Ok(())

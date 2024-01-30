@@ -9,7 +9,11 @@ import {
   MintLayout,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { SCALE_FACTOR_BASE, U64_MAX, initStakePool } from "@mithraic-labs/token-staking";
+import {
+  SCALE_FACTOR_BASE,
+  U64_MAX,
+  initStakePool,
+} from "@mithraic-labs/token-staking";
 
 describe("decimal-overflow", () => {
   const program = anchor.workspace
@@ -48,6 +52,14 @@ describe("decimal-overflow", () => {
     depositor.publicKey,
     false,
     TOKEN_PROGRAM_ID
+  );
+  const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      depositor.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
   );
   const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
   const minDuration = new anchor.BN(1000);
@@ -97,6 +109,17 @@ describe("decimal-overflow", () => {
         maxDuration
       ),
     ]);
+    await program.methods
+      .createVoterWeightRecord()
+      .accounts({
+        owner: depositor.publicKey,
+        registrar: null,
+        stakePool: stakePoolKey,
+        voterWeightRecord: voterWeightRecordKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
   });
 
   it("Handles max token amount scaling", async () => {
@@ -119,6 +142,7 @@ describe("decimal-overflow", () => {
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeMint,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,

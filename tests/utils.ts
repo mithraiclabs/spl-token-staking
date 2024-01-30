@@ -29,7 +29,8 @@ export const deposit = async (
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
-  rewardVaults: anchor.web3.PublicKey[] = []
+  voterWeightRecord: anchor.Address,
+  rewardVaults: anchor.web3.PublicKey[] = [],
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -66,6 +67,7 @@ export const deposit = async (
         from: vaultMintAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord,
         stakeMint,
         destination: stakeMintAccount,
         stakeDepositReceipt: stakeReceiptKey,

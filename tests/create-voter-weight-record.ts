@@ -190,6 +190,10 @@ describe("create-voter-weight-record", () => {
     const voterWeightRecord = VOTER_WEIGHT_RECORD_LAYOUT.decode(
       voterWeightRecordInfo.data
     );
+    assert.deepEqual(
+      voterWeightRecord.accountDiscriminator,
+      [46, 249, 155, 75, 153, 248, 116, 9]
+    );
     assertKeysEqual(voterWeightRecord.realm, realmAddress);
     assertKeysEqual(voterWeightRecord.governingTokenMint, communityTokenMint);
     assertKeysEqual(
@@ -239,6 +243,10 @@ describe("create-voter-weight-record", () => {
       await program.provider.connection.getAccountInfo(voterWeightRecordKey);
     const voterWeightRecord = VOTER_WEIGHT_RECORD_LAYOUT.decode(
       voterWeightRecordInfo.data
+    );
+    assert.deepEqual(
+      voterWeightRecord.accountDiscriminator,
+      [46, 249, 155, 75, 153, 248, 116, 9]
     );
     assertKeysEqual(voterWeightRecord.realm, anchor.web3.PublicKey.default);
     assertKeysEqual(

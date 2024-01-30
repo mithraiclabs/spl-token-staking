@@ -13,7 +13,7 @@ macro_rules! vote_weight_record {
                     anchor_lang::AnchorDeserialize::deserialize(&mut data)
                         .map_err(|_| anchor_lang::error::ErrorCode::AccountDidNotDeserialize)?;
                 if !anchor_lang::solana_program::program_pack::IsInitialized::is_initialized(&vwr) {
-                    return Err(anchor_lang::error::ErrorCode::AccountDidNotSerialize.into());
+                    return Err(anchor_lang::error::ErrorCode::AccountNotInitialized.into());
                 }
                 Ok(VoterWeightRecord(vwr))
             }

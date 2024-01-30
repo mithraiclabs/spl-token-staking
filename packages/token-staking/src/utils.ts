@@ -3,6 +3,7 @@ import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SCALE_FACTOR_BASE, SCALE_FACTOR_BASE_BN, U64_MAX } from "./constants";
 import { SplTokenStaking } from "./idl";
 import { StakeDepositReceiptData, StakePool } from "./types";
+import { VOTER_WEIGHT_RECORD_LAYOUT } from "./accounts";
 
 /**
  * Calculate the digit precision loss based on the given maximum weight.
@@ -206,4 +207,22 @@ export const calculateStakeWeight = (
     baseWeight.add(normalizedWeight.mul(weightDiff).div(SCALE_FACTOR_BASE_BN)),
     baseWeight
   );
+};
+/**
+ *
+ * @param program
+ * @param address
+ * @returns
+ */
+export const fetchVoterWeightRecord = async (
+  program: anchor.Program<SplTokenStaking>,
+  address: anchor.Address
+) => {
+  const acctInfo = await program.provider.connection.getAccountInfo(
+    new anchor.web3.PublicKey(address)
+  );
+  if (!acctInfo) {
+    return null;
+  }
+  return VOTER_WEIGHT_RECORD_LAYOUT.decode(acctInfo.data);
 };

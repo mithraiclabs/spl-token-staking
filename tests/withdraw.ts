@@ -61,6 +61,14 @@ describe("withdraw", () => {
     rewardMint1,
     depositor1.publicKey
   );
+  const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      depositor1.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
+  );
 
   before(async () => {
     // set up depositor account and stake pool account
@@ -72,6 +80,17 @@ describe("withdraw", () => {
     // add reward pool to the initialized stake pool
     await Promise.all([
       addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1),
+      program.methods
+        .createVoterWeightRecord()
+        .accounts({
+          owner: depositor1.publicKey,
+          registrar: null,
+          stakePool: stakePoolKey,
+          voterWeightRecord: voterWeightRecordKey,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc(),
     ]);
   });
 
@@ -102,7 +121,8 @@ describe("withdraw", () => {
       stakeMintAccountKey,
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
-      receiptNonce
+      receiptNonce,
+      voterWeightRecordKey,
     );
 
     await program.methods
@@ -195,6 +215,7 @@ describe("withdraw", () => {
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
       receiptNonce,
+      voterWeightRecordKey,
       [rewardVaultKey]
     );
 
@@ -300,6 +321,7 @@ describe("withdraw", () => {
       new anchor.BN(1_000_000_000),
       new anchor.BN(1_000_000),
       receiptNonce,
+      voterWeightRecordKey,
       [rewardVaultKey]
     );
     try {

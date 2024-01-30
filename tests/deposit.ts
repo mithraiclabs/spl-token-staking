@@ -20,6 +20,7 @@ import {
   addRewardPool,
   calculateStakeWeight,
   createRegistrar,
+  fetchVoterWeightRecord,
   getDigitShift,
   getNextUnusedStakeReceiptNonce,
   initStakePool,
@@ -34,7 +35,7 @@ import { createRealm } from "./utils";
 
 const scaleFactorBN = new anchor.BN(SCALE_FACTOR_BASE.toString());
 
-describe.only("deposit", () => {
+describe("deposit", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const splGovernance = createSplGovernanceProgram(
@@ -96,12 +97,12 @@ describe.only("deposit", () => {
   const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       stakePoolKey.toBuffer(),
-      program.provider.publicKey.toBuffer(),
+      depositor.publicKey.toBuffer(),
       Buffer.from("voterWeightRecord", "utf-8"),
     ],
     program.programId
   );
-  const realmName = "create-registrar-realm";
+  const realmName = "deposit-realm";
   const [realmAddress] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
@@ -110,15 +111,14 @@ describe.only("deposit", () => {
     splGovernance.programId
   );
   const communityTokenMint = mintToBeStaked;
-  const [registrarKey, registrarBump] =
-    anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        realmAddress.toBuffer(),
-        communityTokenMint.toBuffer(),
-        Buffer.from("registrar", "utf-8"),
-      ],
-      program.programId
-    );
+  const [registrarKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      realmAddress.toBuffer(),
+      communityTokenMint.toBuffer(),
+      Buffer.from("registrar", "utf-8"),
+    ],
+    program.programId
+  );
   const realmAuthority = splGovernance.provider.publicKey;
 
   before(async () => {
@@ -155,11 +155,10 @@ describe.only("deposit", () => {
     // add reward pool to the initialized stake pool
     await Promise.all([
       addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1),
-      // TODO
       program.methods
         .createVoterWeightRecord()
         .accounts({
-          owner: program.provider.publicKey,
+          owner: depositor.publicKey,
           registrar: registrarKey,
           stakePool: stakePoolKey,
           voterWeightRecord: voterWeightRecordKey,
@@ -170,7 +169,7 @@ describe.only("deposit", () => {
     ]);
   });
 
-  it.only("First Deposit (5) successful", async () => {
+  it("First Deposit (5) successful", async () => {
     const nextNonce = await getNextUnusedStakeReceiptNonce(
       program.provider.connection,
       program.programId,
@@ -187,8 +186,11 @@ describe.only("deposit", () => {
       ],
       program.programId
     );
-    const mintToBeStakedAccountBefore =
-      await tokenProgram.account.account.fetch(mintToBeStakedAccount);
+    const [mintToBeStakedAccountBefore, voterWeightRecordBefore] =
+      await Promise.all([
+        tokenProgram.account.account.fetch(mintToBeStakedAccount),
+        fetchVoterWeightRecord(program, voterWeightRecordKey),
+      ]);
 
     await program.methods
       .deposit(nextNonce, deposit1Amount, minDuration)
@@ -214,21 +216,27 @@ describe.only("deposit", () => {
       stakeMintAccount,
       stakeReceipt,
       stakePool,
+      voterWeightRecord,
     ] = await Promise.all([
       tokenProgram.account.account.fetch(mintToBeStakedAccount),
       tokenProgram.account.account.fetch(vaultKey),
       tokenProgram.account.account.fetch(stakeMintAccountKey),
       program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
       program.account.stakePool.fetch(stakePoolKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
     ]);
+    const weightedStakeAmount = deposit1Amount.div(
+      new anchor.BN(10 ** digitShift)
+    );
+    assertBNEqual(
+      voterWeightRecord.voterWeight.sub(voterWeightRecordBefore.voterWeight),
+      weightedStakeAmount
+    );
     assertBNEqual(
       mintToBeStakedAccountBefore.amount.sub(deposit1Amount),
       mintToBeStakedAccountAfter.amount
     );
-    assertBNEqual(
-      stakeMintAccount.amount,
-      deposit1Amount.div(new anchor.BN(10 ** digitShift))
-    );
+    assertBNEqual(stakeMintAccount.amount, weightedStakeAmount);
     assertBNEqual(vault.amount, deposit1Amount);
     assertKeysEqual(stakeReceipt.stakePool, stakePoolKey);
     assertKeysEqual(stakeReceipt.owner, depositor.publicKey);
@@ -252,12 +260,15 @@ describe.only("deposit", () => {
   });
 
   it("Second Deposit (1) recalculates effective reward per stake", async () => {
-    const nextNonce = await getNextUnusedStakeReceiptNonce(
-      program.provider.connection,
-      program.programId,
-      depositor.publicKey,
-      stakePoolKey
-    );
+    const [nextNonce, voterWeightRecordBefore] = await Promise.all([
+      getNextUnusedStakeReceiptNonce(
+        program.provider.connection,
+        program.programId,
+        depositor.publicKey,
+        stakePoolKey
+      ),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
+    ]);
     assert.equal(nextNonce, 1);
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
@@ -287,6 +298,7 @@ describe.only("deposit", () => {
         stakeMint,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -303,18 +315,25 @@ describe.only("deposit", () => {
       .preInstructions([transferIx])
       .signers([depositor])
       .rpc({ skipPreflight: true });
-    const [stakeMintAccount, vault, stakeReceipt, stakePool] =
-      await Promise.all([
-        tokenProgram.account.account.fetch(stakeMintAccountKey),
-        tokenProgram.account.account.fetch(vaultKey),
-        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
-        program.account.stakePool.fetch(stakePoolKey),
-      ]);
+    const [
+      stakeMintAccount,
+      vault,
+      stakeReceipt,
+      stakePool,
+      voterWeightRecord,
+    ] = await Promise.all([
+      tokenProgram.account.account.fetch(stakeMintAccountKey),
+      tokenProgram.account.account.fetch(vaultKey),
+      program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+      program.account.stakePool.fetch(stakePoolKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
+    ]);
+    const totalWeightedStakeAmount = deposit1Amount
+      .add(deposit2Amount)
+      .div(new anchor.BN(10 ** digitShift));
     assertBNEqual(vault.amount, deposit1Amount.add(deposit2Amount));
-    assertBNEqual(
-      stakeMintAccount.amount,
-      deposit1Amount.add(deposit2Amount).div(new anchor.BN(10 ** digitShift))
-    );
+    assertBNEqual(stakeMintAccount.amount, totalWeightedStakeAmount);
+    assertBNEqual(voterWeightRecord.voterWeight, totalWeightedStakeAmount);
     assertKeysEqual(stakeReceipt.stakePool, stakePoolKey);
     assertBNEqual(stakeReceipt.depositAmount, deposit2Amount);
     assertKeysEqual(stakeReceipt.owner, depositor.publicKey);
@@ -367,9 +386,11 @@ describe.only("deposit", () => {
       );
     const [stakeReceiptKey1] = getStakeReceiptKey(receiptNonce1);
     const [stakeReceiptKey2] = getStakeReceiptKey(receiptNonce2);
-    const stakeMintAccountBefore1 = await tokenProgram.account.account.fetch(
-      stakeMintAccountKey
-    );
+    const [stakeMintAccountBefore1, voterWeightRecordBefore1] =
+      await Promise.all([
+        tokenProgram.account.account.fetch(stakeMintAccountKey),
+        fetchVoterWeightRecord(program, voterWeightRecordKey),
+      ]);
     await program.methods
       .deposit(receiptNonce1, deposit2Amount, maxDuration)
       .accounts({
@@ -378,6 +399,7 @@ describe.only("deposit", () => {
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeMint,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey1,
@@ -394,23 +416,30 @@ describe.only("deposit", () => {
       ])
       .signers([depositor])
       .rpc({ skipPreflight: true });
-    const [stakeReceipt1, stakeMintAccountAfter1] = await Promise.all([
-      program.account.stakeDepositReceipt.fetch(stakeReceiptKey1),
-      tokenProgram.account.account.fetch(stakeMintAccountKey),
-    ]);
+    const [stakeReceipt1, stakeMintAccountAfter1, voterWeightRecordAfter1] =
+      await Promise.all([
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey1),
+        tokenProgram.account.account.fetch(stakeMintAccountKey),
+        fetchVoterWeightRecord(program, voterWeightRecordKey),
+      ]);
+    const weightedStake = deposit2Amount
+      .mul(maxWeight)
+      .div(scaleFactorBN)
+      .div(new anchor.BN(10 ** digitShift));
     assertBNEqual(
       stakeReceipt1.effectiveStake,
       stakeReceipt1.depositAmount.mul(maxWeight)
     );
     assertBNEqual(
+      voterWeightRecordAfter1.voterWeight.sub(
+        voterWeightRecordBefore1.voterWeight
+      ),
+      weightedStake
+    );
+    assertBNEqual(
       stakeMintAccountAfter1.amount,
       // should be 4x the deposit amount
-      stakeMintAccountBefore1.amount.add(
-        deposit2Amount
-          .mul(maxWeight)
-          .div(scaleFactorBN)
-          .div(new anchor.BN(10 ** digitShift))
-      )
+      stakeMintAccountBefore1.amount.add(weightedStake)
     );
 
     const duration2 = maxDuration.div(new anchor.BN(2));
@@ -423,6 +452,7 @@ describe.only("deposit", () => {
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeMint,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey2,
@@ -439,10 +469,12 @@ describe.only("deposit", () => {
       ])
       .signers([depositor])
       .rpc({ skipPreflight: true });
-    const [stakeReceipt2, stakeMintAccountAfter2] = await Promise.all([
-      program.account.stakeDepositReceipt.fetch(stakeReceiptKey2),
-      tokenProgram.account.account.fetch(stakeMintAccountKey),
-    ]);
+    const [stakeReceipt2, stakeMintAccountAfter2, voterWeightRecordAfter2] =
+      await Promise.all([
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey2),
+        tokenProgram.account.account.fetch(stakeMintAccountKey),
+        fetchVoterWeightRecord(program, voterWeightRecordKey),
+      ]);
     const weight = calculateStakeWeight(
       minDuration,
       maxDuration,
@@ -450,19 +482,24 @@ describe.only("deposit", () => {
       maxWeight,
       duration2
     );
+    const weightedStake2 = deposit2Amount
+      .mul(weight)
+      .div(scaleFactorBN)
+      .div(new anchor.BN(10 ** digitShift));
     assertBNEqual(
       stakeReceipt2.effectiveStake,
       stakeReceipt2.depositAmount.mul(weight)
     );
     assertBNEqual(
+      voterWeightRecordAfter2.voterWeight.sub(
+        voterWeightRecordAfter1.voterWeight
+      ),
+      weightedStake2
+    );
+    assertBNEqual(
       stakeMintAccountAfter2.amount,
       // should be just under 2x the deposit amount
-      stakeMintAccountAfter1.amount.add(
-        deposit2Amount
-          .mul(weight)
-          .div(scaleFactorBN)
-          .div(new anchor.BN(10 ** digitShift))
-      )
+      stakeMintAccountAfter1.amount.add(weightedStake2)
     );
   });
 
@@ -512,6 +549,7 @@ describe.only("deposit", () => {
           stakeMint,
           stakePool: stakePoolKey,
           vault: vaultKey,
+          voterWeightRecord: voterWeightRecordKey,
           destination: stakeMintAccountKey,
           stakeDepositReceipt: stakeReceiptKey,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -564,6 +602,7 @@ describe.only("deposit", () => {
           stakeMint,
           stakePool: stakePoolKey,
           vault: vaultKey,
+          voterWeightRecord: voterWeightRecordKey,
           destination: stakeMintAccountKey,
           stakeDepositReceipt: stakeReceiptKey,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -612,8 +651,11 @@ describe.only("deposit", () => {
       program.provider.publicKey,
       rewardsTransferAmount.toNumber()
     );
-    const stakeMintAccountBefore = await tokenProgram.account.account.fetch(
-      stakeMintAccountKey
+    const [stakeMintAccountBefore, voterWeightRecordBefore] = await Promise.all(
+      [
+        tokenProgram.account.account.fetch(stakeMintAccountKey),
+        fetchVoterWeightRecord(program, voterWeightRecordKey),
+      ]
     );
     await program.methods
       .deposit(nextNonce, deposit2Amount, maxDuration.muln(2))
@@ -624,6 +666,7 @@ describe.only("deposit", () => {
         stakeMint,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -640,21 +683,28 @@ describe.only("deposit", () => {
       .preInstructions([transferIx])
       .signers([depositor])
       .rpc();
-    const [receipt, stakeMintAccountAfter] = await Promise.all([
-      program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
-      tokenProgram.account.account.fetch(stakeMintAccountKey),
-    ]);
+    const [receipt, stakeMintAccountAfter, voterWeightRecordAfter] =
+      await Promise.all([
+        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+        tokenProgram.account.account.fetch(stakeMintAccountKey),
+        fetchVoterWeightRecord(program, voterWeightRecordKey),
+      ]);
+    const weightedStake = deposit2Amount
+      .mul(maxWeight)
+      .div(scaleFactorBN)
+      .div(new anchor.BN(10 ** digitShift));
 
     assertBNEqual(receipt.lockupDuration, maxDuration);
     assertBNEqual(receipt.effectiveStake, receipt.depositAmount.mul(maxWeight));
     assertBNEqual(
+      voterWeightRecordAfter.voterWeight.sub(
+        voterWeightRecordBefore.voterWeight
+      ),
+      weightedStake
+    );
+    assertBNEqual(
       stakeMintAccountAfter.amount,
-      stakeMintAccountBefore.amount.add(
-        deposit2Amount
-          .mul(maxWeight)
-          .div(scaleFactorBN)
-          .div(new anchor.BN(10 ** digitShift))
-      )
+      stakeMintAccountBefore.amount.add(weightedStake)
     );
   });
 
@@ -668,7 +718,28 @@ describe.only("deposit", () => {
       owner.publicKey,
       stakePoolKey
     );
-    assert.equal(nextNonce, 0);
+    const [voterWeightRecordKey2] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          stakePoolKey.toBuffer(),
+          owner.publicKey.toBuffer(),
+          Buffer.from("voterWeightRecord", "utf-8"),
+        ],
+        program.programId
+      );
+    // create VWR for external owner
+    await program.methods
+      .createVoterWeightRecord()
+      .accounts({
+        owner: owner.publicKey,
+        registrar: registrarKey,
+        stakePool: stakePoolKey,
+        voterWeightRecord: voterWeightRecordKey2,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc(),
+      assert.equal(nextNonce, 0);
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         owner.publicKey.toBuffer(),
@@ -690,8 +761,11 @@ describe.only("deposit", () => {
       owner.publicKey,
       stakeMint
     );
-    const mintToBeStakedAccountBefore =
-      await tokenProgram.account.account.fetch(mintToBeStakedAccount);
+    const [mintToBeStakedAccountBefore, voterWeightRecordBefore] =
+      await Promise.all([
+        tokenProgram.account.account.fetch(mintToBeStakedAccount),
+        fetchVoterWeightRecord(program, voterWeightRecordKey2),
+      ]);
 
     await program.methods
       .deposit(nextNonce, depositAmount, minDuration)
@@ -701,6 +775,7 @@ describe.only("deposit", () => {
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey2,
         stakeMint,
         destination: stakeMintAccountKey,
         stakeDepositReceipt: stakeReceiptKey,
@@ -719,19 +794,30 @@ describe.only("deposit", () => {
       .signers([depositor])
       .rpc({ skipPreflight: true });
 
-    const [mintToBeStakedAccountAfter, stakeMintAccount, stakeReceipt] =
-      await Promise.all([
-        tokenProgram.account.account.fetch(mintToBeStakedAccount),
-        tokenProgram.account.account.fetch(stakeMintAccountKey),
-        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
-      ]);
+    const [
+      mintToBeStakedAccountAfter,
+      stakeMintAccount,
+      stakeReceipt,
+      voterWeightRecordAfter,
+    ] = await Promise.all([
+      tokenProgram.account.account.fetch(mintToBeStakedAccount),
+      tokenProgram.account.account.fetch(stakeMintAccountKey),
+      program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey2),
+    ]);
+    const weightedStakeAmount = depositAmount.div(
+      new anchor.BN(10 ** digitShift)
+    );
     assertKeysEqual(stakeReceipt.owner, owner.publicKey);
     assertBNEqual(stakeReceipt.depositAmount, depositAmount);
     assertKeysEqual(stakeReceipt.payer, depositor.publicKey);
     assertBNEqual(
-      stakeMintAccount.amount,
-      depositAmount.div(new anchor.BN(10 ** digitShift))
+      voterWeightRecordAfter.voterWeight.sub(
+        voterWeightRecordBefore.voterWeight
+      ),
+      weightedStakeAmount
     );
+    assertBNEqual(stakeMintAccount.amount, weightedStakeAmount);
     assertBNEqual(
       mintToBeStakedAccountAfter.amount,
       mintToBeStakedAccountBefore.amount.sub(depositAmount)

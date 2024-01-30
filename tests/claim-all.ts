@@ -64,6 +64,22 @@ describe("claim-all", () => {
     rewardMint1,
     depositor1.publicKey
   );
+  const [voterWeightRecordKey1] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      depositor1.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
+  );
+  const [voterWeightRecordKey2] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      depositor2.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
+  );
 
   before(async () => {
     // set up depositor account and stake pool account
@@ -75,6 +91,28 @@ describe("claim-all", () => {
     // add reward pool to the initialized stake pool
     await Promise.all([
       addRewardPool(program, stakePoolNonce, mintToBeStaked, rewardMint1),
+      program.methods
+        .createVoterWeightRecord()
+        .accounts({
+          owner: depositor1.publicKey,
+          registrar: null,
+          stakePool: stakePoolKey,
+          voterWeightRecord: voterWeightRecordKey1,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc(),
+      program.methods
+        .createVoterWeightRecord()
+        .accounts({
+          owner: depositor2.publicKey,
+          registrar: null,
+          stakePool: stakePoolKey,
+          voterWeightRecord: voterWeightRecordKey2,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: anchor.web3.SystemProgram.programId,
+        })
+        .rpc(),
     ]);
   });
 
@@ -99,7 +137,8 @@ describe("claim-all", () => {
       stakeMintAccountKey,
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
-      receiptNonce
+      receiptNonce,
+      voterWeightRecordKey1
     );
 
     const totalReward1 = 1_000_000_000;
@@ -205,6 +244,7 @@ describe("claim-all", () => {
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
       receipt2Nonce,
+      voterWeightRecordKey2,
       [rewardVaultKey]
     );
 
