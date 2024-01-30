@@ -13,7 +13,11 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
+import {
+  addRewardPool,
+  fetchVoterWeightRecord,
+  initStakePool,
+} from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
 import { assertBNEqual } from "./genericTests";
 
@@ -105,12 +109,17 @@ describe("withdraw", () => {
       ],
       program.programId
     );
-    const [stakePoolBefore, depositerMintAccountBefore, sTokenAccountBefore] =
-      await Promise.all([
-        program.account.stakePool.fetch(stakePoolKey),
-        tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
-        tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
-      ]);
+    const [
+      stakePoolBefore,
+      depositerMintAccountBefore,
+      sTokenAccountBefore,
+      voterWeightRecordBefore,
+    ] = await Promise.all([
+      program.account.stakePool.fetch(stakePoolKey),
+      tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
+      tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
+    ]);
     // deposit 1 token
     await deposit(
       program,
@@ -122,7 +131,7 @@ describe("withdraw", () => {
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
       receiptNonce,
-      voterWeightRecordKey,
+      voterWeightRecordKey
     );
 
     await program.methods
@@ -135,6 +144,7 @@ describe("withdraw", () => {
           tokenProgram: TOKEN_PROGRAM_ID,
         },
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeMint,
         from: stakeMintAccountKey,
         destination: mintToBeStakedAccountKey,
@@ -161,6 +171,7 @@ describe("withdraw", () => {
       vaultAfter,
       stakeMintAfter,
       stakeDepositReceipt,
+      voterWeightRecordAfter,
     ] = await Promise.all([
       program.account.stakePool.fetch(stakePoolKey),
       tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
@@ -168,7 +179,12 @@ describe("withdraw", () => {
       tokenProgramInstance.account.account.fetch(vaultKey),
       tokenProgramInstance.account.mint.fetch(stakeMint),
       program.provider.connection.getAccountInfo(stakeReceiptKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
     ]);
+    assertBNEqual(
+      voterWeightRecordBefore.voterWeight,
+      voterWeightRecordAfter.voterWeight
+    );
     assertBNEqual(
       stakePoolBefore.totalWeightedStake,
       stakePoolAfter.totalWeightedStake
@@ -198,12 +214,17 @@ describe("withdraw", () => {
       program.programId
     );
 
-    const [stakePoolBefore, depositerMintAccountBefore, sTokenAccountBefore] =
-      await Promise.all([
-        program.account.stakePool.fetch(stakePoolKey),
-        tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
-        tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
-      ]);
+    const [
+      stakePoolBefore,
+      depositerMintAccountBefore,
+      sTokenAccountBefore,
+      voterWeightRecordBefore,
+    ] = await Promise.all([
+      program.account.stakePool.fetch(stakePoolKey),
+      tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
+      tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
+    ]);
     // deposit 1 token
     await deposit(
       program,
@@ -250,6 +271,7 @@ describe("withdraw", () => {
           tokenProgram: TOKEN_PROGRAM_ID,
         },
         vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeMint,
         from: stakeMintAccountKey,
         destination: mintToBeStakedAccountKey,
@@ -276,6 +298,7 @@ describe("withdraw", () => {
       vaultAfter,
       stakeMintAfter,
       depositorReward1AccountAfter,
+      voterWeightRecordAfter,
     ] = await Promise.all([
       program.account.stakePool.fetch(stakePoolKey),
       tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
@@ -283,7 +306,12 @@ describe("withdraw", () => {
       tokenProgramInstance.account.account.fetch(vaultKey),
       tokenProgramInstance.account.mint.fetch(stakeMint),
       tokenProgramInstance.account.account.fetch(depositorReward1AccountKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
     ]);
+    assertBNEqual(
+      voterWeightRecordBefore.voterWeight,
+      voterWeightRecordAfter.voterWeight
+    );
     assertBNEqual(
       stakePoolBefore.totalWeightedStake,
       stakePoolAfter.totalWeightedStake
@@ -335,6 +363,7 @@ describe("withdraw", () => {
             tokenProgram: TOKEN_PROGRAM_ID,
           },
           vault: vaultKey,
+          voterWeightRecord: voterWeightRecordKey,
           stakeMint,
           from: stakeMintAccountKey,
           destination: mintToBeStakedAccountKey,

@@ -1,7 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, TokenAccount, Transfer};
 
-use crate::{errors::ErrorCode, stake_pool_signer_seeds, state::StakeDepositReceipt};
+use crate::{
+    errors::ErrorCode,
+    stake_pool_signer_seeds,
+    state::{StakeDepositReceipt, VoterWeightRecord},
+};
 
 use super::claim_base::*;
 use crate::state::u128;
@@ -13,6 +17,20 @@ pub struct Withdraw<'info> {
     /// Vault of the StakePool token will be transferred from
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        // Must enforce the VWR and StakeReceipt owner are the same. This enforces VWR as an accumulator for the
+        // owner's total stake weight for the stake_pool.
+        seeds = [
+            claim_base.stake_pool.key().as_ref(),
+            claim_base.owner.key().as_ref(),
+            b"voterWeightRecord".as_ref()
+        ],
+        bump,
+        constraint = claim_base.stake_deposit_receipt.owner.key() == voter_weight_record.governing_token_owner @ ErrorCode::InvalidOwner,
+    )]
+    pub voter_weight_record: Account<'info, VoterWeightRecord>,
 
     /// stake_mint of StakePool that will be burned
     #[account(mut)]
@@ -109,6 +127,19 @@ pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, Withdraw<'info>>) -> Re
             )
             .unwrap();
         stake_pool.total_weighted_stake = u128(total_staked.to_le_bytes());
+        // Decrement from VWR same amount of effective stake from StakeDepositReceipt
+        let effective_stake_u64 = StakeDepositReceipt::get_token_amount_from_stake(
+            ctx.accounts
+                .claim_base
+                .stake_deposit_receipt
+                .effective_stake_u128(),
+            stake_pool.max_weight,
+        );
+        let voter_weight_record = &mut ctx.accounts.voter_weight_record;
+        voter_weight_record.voter_weight = voter_weight_record
+            .voter_weight
+            .checked_sub(effective_stake_u64)
+            .unwrap();
     }
     ctx.accounts.transfer_staked_tokens_to_owner()?;
     ctx.accounts.burn_stake_weight_tokens_from_owner()?;
