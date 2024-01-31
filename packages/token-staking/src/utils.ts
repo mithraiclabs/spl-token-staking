@@ -1,6 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { SCALE_FACTOR_BASE, SCALE_FACTOR_BASE_BN, U64_MAX } from "./constants";
+import _chunk from "lodash.chunk";
+import bs58 from "bs58";
+import {
+  SCALE_FACTOR_BASE,
+  SCALE_FACTOR_BASE_BN,
+  STAKE_DEPOSIT_RECEIPT_DISCRIMINATOR,
+  U64_MAX,
+} from "./constants";
 import { SplTokenStaking } from "./idl";
 import { StakeDepositReceiptData, StakePool } from "./types";
 
@@ -206,4 +213,62 @@ export const calculateStakeWeight = (
     baseWeight.add(normalizedWeight.mul(weightDiff).div(SCALE_FACTOR_BASE_BN)),
     baseWeight
   );
+};
+
+/**
+ * Fetch an chunked array of StakeReceipts by StakePool and optionally
+ * filtered by `deposit_timestamp` using an inclusive start and end time.
+ * @param program 
+ * @param stakePool 
+ * @param startTime - (in seconds) inclusive startTime to filter `deposit_timestamp` 
+ * @param endTime - (in seconds) inclusive endTime to filter `deposit_timestamp` 
+ * @returns 
+ */
+export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
+  program: anchor.Program<SplTokenStaking>,
+  stakePool: anchor.Address,
+  startTime: number | string = 0,
+  endTime: number | string = Number.MAX_SAFE_INTEGER
+) => {
+  const startTimeBN = new anchor.BN(startTime);
+  const endTimeBN = new anchor.BN(endTime);
+  const discriminatorFilter = {
+    // ensure it's `StakeDepositReceipt`
+    memcmp: {
+      offset: 0,
+      bytes: bs58.encode(STAKE_DEPOSIT_RECEIPT_DISCRIMINATOR),
+    },
+  };
+  const stakePoolFilter = {
+    // filter by `StakePool` address
+    memcmp: {
+      offset: 8 + 32 + 32,
+      bytes: new anchor.web3.PublicKey(stakePool).toBase58(),
+    },
+  };
+  // pre-fetch addresses without data, so we can paginate
+  const accountInfos = await program.provider.connection.getProgramAccounts(
+    program.programId,
+    {
+      // only fetch the `deposit_timestamp` value, so we can further filter
+      dataSlice: { offset: 8 + 32 + 32 + 32 + 8, length: 8 },
+      filters: [discriminatorFilter, stakePoolFilter],
+    }
+  );
+  // Filter fetched accounts by the `deposit_timestamp`
+  const accountInfosWithinTimeframe = accountInfos.filter((a) => {
+    const timeInSeconds = new anchor.BN(a.account.data, "le");
+    return timeInSeconds.gte(startTimeBN) && timeInSeconds.lte(endTimeBN);
+  });
+  const keyList = accountInfosWithinTimeframe.map((a) => a.pubkey);
+
+  // allow 50 per fetchMultiple
+  const chunkedKeys = _chunk(keyList, 50);
+  const chunkedStakeReceipts = await Promise.all(
+    chunkedKeys.map((keys) =>
+      program.account.stakeDepositReceipt.fetchMultiple(keys)
+    )
+  );
+
+  return chunkedStakeReceipts;
 };
