@@ -74,6 +74,7 @@ describe("initialize-stake-pool", () => {
     assertKeysEqual(stakePool.mint, mintToBeStaked);
     assertKeysEqual(stakePool.stakeMint, stakeMintKey);
     assertKeysEqual(stakePool.vault, vaultKey);
+    assertKeysEqual(stakePool.creator, program.provider.publicKey);
     // Nothing staked yet
     assertBNEqual(new anchor.BN(stakePool.totalWeightedStake), 0);
     assertBNEqual(stakePool.baseWeight, baseWeight);

@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "0.1.3",
+  version: "1.1.1",
   name: "spl_token_staking",
   instructions: [
     {
@@ -84,6 +84,34 @@ export const _SplTokenStakingIDL = {
           type: "u64",
         },
       ],
+    },
+    {
+      name: "transferAuthority",
+      docs: [
+        "DANGEROUSLY Update `authority` of [StakePool](state::StakePool) to `new_authority`.",
+        "This is useful for quickly setting up a StakePool and then transfering it to a",
+        "form of governance.",
+      ],
+      accounts: [
+        {
+          name: "authority",
+          isMut: true,
+          isSigner: true,
+          docs: ["Current authority of the StakePool"],
+        },
+        {
+          name: "newAuthority",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "stakePool",
+          isMut: true,
+          isSigner: false,
+          docs: ["StakePool that will have it's authority updated"],
+        },
+      ],
+      args: [],
     },
     {
       name: "addRewardPool",
@@ -379,6 +407,13 @@ export const _SplTokenStakingIDL = {
         kind: "struct",
         fields: [
           {
+            name: "creator",
+            docs: [
+              "The original creator of the StakePool. Necessary for signer seeds",
+            ],
+            type: "publicKey",
+          },
+          {
             name: "authority",
             docs: ["Pubkey that can make updates to StakePool"],
             type: "publicKey",
@@ -473,7 +508,7 @@ export const _SplTokenStakingIDL = {
           {
             name: "reserved0",
             type: {
-              array: ["u8", 8],
+              array: ["u8", 256],
             },
           },
         ],

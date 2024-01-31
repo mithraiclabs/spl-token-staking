@@ -84,10 +84,12 @@ impl RewardPool {
     }
 }
 
-#[assert_size(832)]
+#[assert_size(1112)]
 #[account(zero_copy)]
 #[repr(C)]
 pub struct StakePool {
+    /// The original creator of the StakePool. Necessary for signer seeds
+    pub creator: Pubkey,
     /** Pubkey that can make updates to StakePool */
     pub authority: Pubkey,
     /** Total amount staked that accounts for the lock up period weighting.
@@ -122,7 +124,7 @@ pub struct StakePool {
     pub bump_seed: u8,
     // padding to next 8-byte
     _padding0: [u8; 6],
-    _reserved0: [u8; 8],
+    _reserved0: [u8; 256],
 }
 
 impl StakePool {

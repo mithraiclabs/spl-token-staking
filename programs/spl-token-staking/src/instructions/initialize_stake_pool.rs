@@ -80,6 +80,7 @@ pub fn handler(
         return Err(ErrorCode::InvalidStakePoolWeight.into());
     }
     let mut stake_pool = ctx.accounts.stake_pool.load_init()?;
+    stake_pool.creator = ctx.accounts.authority.key();
     stake_pool.authority = ctx.accounts.authority.key();
     stake_pool.mint = ctx.accounts.mint.key();
     stake_pool.stake_mint = ctx.accounts.stake_mint.key();

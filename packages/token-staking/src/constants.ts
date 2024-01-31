@@ -10,7 +10,7 @@ export const STAKE_DEPOSIT_RECEIPT_DISCRIMINATOR = [
 ];
 
 export const SPL_TOKEN_STAKING_ID =
-  "STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB";
+  "STAKEGztX7S1MUHxcQHieZhELCntb9Ys9BgUbeEtMu1";
 
 /**
  * @deprecated

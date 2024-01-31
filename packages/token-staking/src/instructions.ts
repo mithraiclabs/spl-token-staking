@@ -138,7 +138,6 @@ export const createStakeBuilder = (
   receiptNonce: number,
   rewardVaults: anchor.web3.PublicKey[] = []
 ) => {
-  const pubkey = program.provider.publicKey ?? anchor.web3.PublicKey.default;
   const _stakePoolKey =
     typeof stakePoolKey === "string"
       ? new anchor.web3.PublicKey(stakePoolKey)
@@ -153,7 +152,7 @@ export const createStakeBuilder = (
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
-      pubkey.toBuffer(),
+      owner.toBuffer(),
       _stakePoolKey.toBuffer(),
       new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
       Buffer.from("stakeDepositReceipt", "utf-8"),
@@ -229,9 +228,7 @@ export const createStakeInstruction = async (
  * @param program
  * @param payer
  * @param owner
- * @param stakePoolNonce
- * @param stakePoolMint
- * @param stakePoolAuthority
+ * @param stakePoolKey
  * @param from
  * @param stakeMintAccount
  * @param amount
@@ -244,9 +241,7 @@ export const deposit = async (
   program: anchor.Program<SplTokenStaking>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
-  stakePoolNonce: number,
-  stakePoolMint: anchor.Address,
-  stakePoolAuthority: anchor.Address,
+  stakePoolKey: anchor.Address,
   from: anchor.Address,
   stakeMintAccount: anchor.Address,
   amount: anchor.BN,
@@ -261,15 +256,6 @@ export const deposit = async (
     postInstructions: [],
   }
 ) => {
-  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
-      new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
-      new anchor.web3.PublicKey(stakePoolAuthority).toBuffer(),
-      Buffer.from("stakePool", "utf-8"),
-    ],
-    program.programId
-  );
   return createStakeBuilder(
     program,
     payer,

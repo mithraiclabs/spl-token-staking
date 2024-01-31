@@ -36,6 +36,7 @@ describe("transfer-authority", () => {
       })
       .rpc();
     const stakePool = await program.account.stakePool.fetch(stakePoolKey);
+    assertKeysEqual(stakePool.creator, stakePoolBefore.creator);
     assertKeysEqual(stakePool.authority, newAuthority.publicKey);
   });
 
