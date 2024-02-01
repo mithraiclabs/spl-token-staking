@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 import { SCALE_FACTOR_BASE } from "./constants";
 import { SplTokenStaking } from "./idl";
+import { SplTokenStakingV0 } from "./idl_v0";
 
 /**
  * Initialize the StakePool and set configuration parameters.
@@ -15,7 +16,7 @@ import { SplTokenStaking } from "./idl";
  * @param authority - defaults to `program.provider.publicKey`
  */
 export const initStakePool = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   mint: anchor.Address,
   nonce = 0,
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
@@ -70,7 +71,7 @@ export const initStakePool = async (
  * @returns
  */
 export const addRewardPool = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   stakePoolNonce: number,
   stakePoolMint: anchor.Address,
   rewardMint: anchor.web3.PublicKey,
@@ -127,7 +128,7 @@ export const addRewardPool = async (
  * @returns
  */
 export const createStakeBuilder = (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
@@ -198,7 +199,7 @@ export const createStakeBuilder = (
  * @returns
  */
 export const createStakeInstruction = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
   stakePoolkey: anchor.Address,
@@ -238,7 +239,7 @@ export const createStakeInstruction = async (
  * @param options
  */
 export const deposit = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,

@@ -1,6 +1,6 @@
 {
   "name": "@mithraic-labs/token-staking",
-  "version": "1.0.1-beta.2",
+  "version": "1.0.1-beta.3",
   "description": "SPL Token staking TS package",
   "main": "src/index.ts",
   "module": "src/index.ts",
