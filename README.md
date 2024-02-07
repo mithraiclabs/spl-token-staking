@@ -50,8 +50,6 @@ Note, this is not equal to the amount of SPL Tokens staked. */
 total_weighted_stake: u128,
 /** Token Account to store the staked SPL Token */
 vault: Pubkey,
-/** Mint of the token representing effective stake */
-stake_mint: Pubkey,
 /** Array of RewardPools that apply to the stake pool */
 reward_pools: Vec<RewardPool>,
 /** Base weight for staking lockup. In terms of 1 / SCALE_FACTOR_BASE */
@@ -64,7 +62,7 @@ min_duration: u64,
 max_duration: u64,
 /** Nonce to derive multiple stake pools from same mint */
 nonce: u8,
-/** Bump seed for stake_mint */
+/** Bump seed for StakePool */
 bump_seed: u8,
 ```
 
@@ -109,10 +107,12 @@ bump: u8,
 ## CreateRegistrar
 - Create a `Registrar` where the effective stake will be used as voting power
 
+## CreateVoterWeightRecord
+- Creates a `VoterWeightRecord` account to store effective stake counter
+
 ## InitStakePool
 
 - Create the **StakePool** account
-- Init **stake_mint** SPL Token
 
 ## AddRewardPool
 
@@ -130,7 +130,7 @@ bump: u8,
   - Calculate the effective stake weight based on lockup duration
   - store `rewards_per_effective_stake` of each RewardPool in `claimed_amounts`
 - Increment **StakePool** `total_weighted_stake`
-- Transfer effective stake amount of **StakePool** `stake_mint` to owner
+- Increment VoterWeightRecord
 
 ## ClaimAll
 
@@ -149,7 +149,7 @@ bump: u8,
 - Validations
   - **StakeDepositReceipt** `owner` is Signer
   - **StakeDepositReceipt** and **StakePool** match
-- Burn effective stake amount of **StakePool** `stake_mint` from `owner`
+- Decrement VoterWeightRecord
 - Claim any leftover rewards
 - Decrement **StakePool** `total_weighted_stake` by `total_weighted_stake`
 - Transfer `deposit_amount` from `vault` to `owner`
