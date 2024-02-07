@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 import { SCALE_FACTOR_BASE } from "./constants";
 import { SplTokenStaking } from "./idl";
+import { SplTokenStakingV0 } from "./idl_v0";
 
 /**
  * Initialize the StakePool and set configuration parameters.
@@ -16,7 +17,7 @@ import { SplTokenStaking } from "./idl";
  * @param registar - Registrar key if this StakePool uses SPL-Governance
  */
 export const initStakePool = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   mint: anchor.Address,
   nonce = 0,
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
@@ -67,7 +68,7 @@ export const initStakePool = async (
  * @returns
  */
 export const addRewardPool = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   stakePoolNonce: number,
   stakePoolMint: anchor.Address,
   rewardMint: anchor.web3.PublicKey,
@@ -123,7 +124,7 @@ export const addRewardPool = async (
  * @returns
  */
 export const createStakeBuilder = (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
@@ -133,7 +134,6 @@ export const createStakeBuilder = (
   receiptNonce: number,
   rewardVaults: anchor.web3.PublicKey[] = []
 ) => {
-  const pubkey = program.provider.publicKey ?? anchor.web3.PublicKey.default;
   const _stakePoolKey =
     typeof stakePoolKey === "string"
       ? new anchor.web3.PublicKey(stakePoolKey)
@@ -144,7 +144,7 @@ export const createStakeBuilder = (
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
-      pubkey.toBuffer(),
+      owner.toBuffer(),
       _stakePoolKey.toBuffer(),
       new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
       Buffer.from("stakeDepositReceipt", "utf-8"),
@@ -187,7 +187,7 @@ export const createStakeBuilder = (
  * @returns
  */
 export const createStakeInstruction = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
   stakePoolkey: anchor.Address,
@@ -215,9 +215,7 @@ export const createStakeInstruction = async (
  * @param program
  * @param payer
  * @param owner
- * @param stakePoolNonce
- * @param stakePoolMint
- * @param stakePoolAuthority
+ * @param stakePoolKey
  * @param from
  * @param amount
  * @param duration
@@ -226,12 +224,10 @@ export const createStakeInstruction = async (
  * @param options
  */
 export const deposit = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
-  stakePoolNonce: number,
-  stakePoolMint: anchor.Address,
-  stakePoolAuthority: anchor.Address,
+  stakePoolKey: anchor.Address,
   from: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
@@ -245,15 +241,6 @@ export const deposit = async (
     postInstructions: [],
   }
 ) => {
-  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
-      new anchor.web3.PublicKey(stakePoolMint).toBuffer(),
-      new anchor.web3.PublicKey(stakePoolAuthority).toBuffer(),
-      Buffer.from("stakePool", "utf-8"),
-    ],
-    program.programId
-  );
   return createStakeBuilder(
     program,
     payer,

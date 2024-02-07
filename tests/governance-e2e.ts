@@ -17,7 +17,7 @@ import {
 import { createRealm, deposit } from "./utils";
 import { assert } from "chai";
 
-describe.only("governance-e2e", () => {
+describe("governance-e2e", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const splGovernance = createSplGovernanceProgram(
