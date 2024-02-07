@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
-// use borsh::{BorshDeserialize, BorshSerialize, BorshSchema};
 use bytemuck::{Pod, Zeroable};
 use core::primitive;
 use jet_proc_macros::assert_size;
@@ -393,55 +392,6 @@ mod tests {
         let max_duration = 200;
 
         mock_stakepool(base_weight, max_weight, min_duration, max_duration)
-    }
-
-    // #[test]
-    // fn create_realm_buffer() {
-    //     let create_realm = GovernanceInstruction::CreateRealm {
-    //         config_args: RealmConfigArgs {
-    //             use_council_mint: false,
-    //             min_community_weight_to_create_governance: 100,
-    //             community_mint_max_voter_weight_source: MintMaxVoterWeightSource::Absolute(0),
-    //             community_token_config_args: GoverningTokenConfigArgs {
-    //                 use_voter_weight_addin: true,
-    //                 use_max_voter_weight_addin: false,
-    //                 token_type: GoverningTokenType::Liquid,
-    //             },
-    //             council_token_config_args: GoverningTokenConfigArgs {
-    //                 use_voter_weight_addin: false,
-    //                 use_max_voter_weight_addin: false,
-    //                 token_type: GoverningTokenType::Liquid,
-    //             },
-    //         },
-    //         name: "Test Realm".to_string(),
-    //     };
-    //     let mut account_data = vec![];
-    //     create_realm.serialize(&mut account_data).unwrap();
-    //     println!("CreateRealm {:?}", account_data);
-    //     // len 38
-    // }
-
-    #[test]
-    fn serialize_voter_weight_record() {
-        let voter_weight_record = VoterWeightRecord {
-            0: spl_governance_addin_api::voter_weight::VoterWeightRecord {
-                account_discriminator:
-                    spl_governance_addin_api::voter_weight::VoterWeightRecord::ACCOUNT_DISCRIMINATOR,
-                realm: Pubkey::default(),
-                governing_token_mint: Pubkey::default(),
-                governing_token_owner: Pubkey::default(),
-                voter_weight: 0,
-                voter_weight_expiry: None,
-                weight_action: None,
-                weight_action_target: None,
-                reserved: [0u8; 8],
-            },
-        };
-        let mut buffer: &mut [u8] = &mut [0u8; 176];
-        println!("before buffer len {:?} {:?}", buffer.len(), buffer);
-        voter_weight_record.try_serialize(&mut buffer).unwrap();
-        println!("buffer len {:?} {:?}", buffer.len(), buffer);
-        assert_eq!([0u8; 176], buffer);
     }
 
     #[test]

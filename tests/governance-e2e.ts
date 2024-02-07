@@ -14,8 +14,8 @@ import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { assert } from "chai";
 import { createRealm, deposit } from "./utils";
+import { assert } from "chai";
 
 describe.only("governance-e2e", () => {
   const program = anchor.workspace
@@ -55,6 +55,15 @@ describe.only("governance-e2e", () => {
     ],
     program.programId
   );
+  const [mintGovernanceAddress] =
+  anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("mint-governance", "utf-8"),
+      realmAddress.toBuffer(),
+      communityTokenMint.toBuffer(),
+    ],
+    splGovernance.programId
+  );
 
   it("should have VWR recognized by SPL Governance program", async () => {
     await createRealm(
@@ -65,16 +74,6 @@ describe.only("governance-e2e", () => {
       realmAuthority,
       program.programId
     );
-    // const [payerTokenOwnerRecordKey] =
-    //   anchor.web3.PublicKey.findProgramAddressSync(
-    //     [
-    //       Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
-    //       realmAddress.toBuffer(),
-    //       communityTokenMint.toBuffer(),
-    //       program.provider.publicKey.toBuffer(),
-    //     ],
-    //     splGovernance.programId
-    //   );
     const [depositorTokenOwnerRecordKey] =
       anchor.web3.PublicKey.findProgramAddressSync(
         [
@@ -97,24 +96,15 @@ describe.only("governance-e2e", () => {
           systemProgram: anchor.web3.SystemProgram.programId,
         })
         .rpc(),
-      // splGovernance.methods
-      //   .createTokenOwnerRecord()
-      //   .accounts({
-      //     realm: realmAddress,
-      //     governingTokenMint: communityTokenMint,
-      //     governingTokenOwner: program.provider.publicKey,
-      //     tokenOwnerRecordAddress: payerTokenOwnerRecordKey,
-      //     systemProgram: anchor.web3.SystemProgram.programId,
-      //   })
-      //   .rpc(),
+        createRegistrar(
+          program,
+          realmAddress,
+          mintToBeStaked,
+          splGovernance.programId,
+          program.provider.publicKey
+        )
     ]);
-    await createRegistrar(
-      program,
-      realmAddress,
-      mintToBeStaked,
-      splGovernance.programId,
-      program.provider.publicKey
-    );
+
     await Promise.all([
       createDepositorSplAccounts(
         // @ts-ignore
@@ -132,60 +122,42 @@ describe.only("governance-e2e", () => {
         undefined,
         registrarKey
       ),
+        // Create governance
+        splGovernance.methods
+        .createMintGovernance(
+          // @ts-ignore something wrong with types, nice to fix.
+          {
+            communityVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
+            minCommunityWeightToCreateProposal: new anchor.BN(0),
+            minTransactionHoldUpTime: 0,
+            votingBaseTime: 1000,
+            communityVoteTipping: { disabled: {} },
+            councilVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
+            councilVetoVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
+            minCouncilWeightToCreateProposal: new anchor.BN(0),
+            councilVoteTipping: { disabled: {} },
+            communityVetoVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
+            votingCoolOffTime: 0,
+            depositExemptProposalCount: 10,
+          },
+          false
+        )
+        .accounts({
+          realm: realmAddress,
+          mintGovernanceAddress,
+          governedMint: mintToBeStaked,
+          governedMintAuthority: program.provider.publicKey,
+          tokenOwnerRecord: depositorTokenOwnerRecordKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          createAuthority: program.provider.publicKey,
+          payer: depositor.publicKey,
+        })
+        .signers([depositor])
+        .rpc({ skipPreflight: true }),
     ]);
 
-    // Create governance
-    const [mintGovernanceAddress] =
-      anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("mint-governance", "utf-8"),
-          realmAddress.toBuffer(),
-          communityTokenMint.toBuffer(),
-        ],
-        splGovernance.programId
-      );
-    await splGovernance.methods
-      .createMintGovernance(
-        {
-          communityVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
-          minCommunityWeightToCreateProposal: new anchor.BN(0),
-          minTransactionHoldUpTime: 0,
-          votingBaseTime: 1000,
-          communityVoteTipping: { disabled: {} },
-          councilVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
-          councilVetoVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
-          minCouncilWeightToCreateProposal: new anchor.BN(0),
-          councilVoteTipping: { disabled: {} },
-          communityVetoVoteThreshold: { yesVotePercentage: [new anchor.BN(1)] },
-          votingCoolOffTime: 0,
-          depositExemptProposalCount: 10,
-        },
-        false
-      )
-      .accounts({
-        realm: realmAddress,
-        mintGovernanceAddress,
-        governedMint: mintToBeStaked,
-        governedMintAuthority: program.provider.publicKey,
-        tokenOwnerRecord: depositorTokenOwnerRecordKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        createAuthority: program.provider.publicKey,
-        payer: depositor.publicKey,
-      })
-      .signers([depositor])
-      .rpc({ skipPreflight: true });
-
     // Stake amounts so VWR has value
-    // const [payerVoterWeightRecordKey] =
-    //   anchor.web3.PublicKey.findProgramAddressSync(
-    //     [
-    //       stakePoolKey.toBuffer(),
-    //       program.provider.publicKey.toBuffer(),
-    //       Buffer.from("voterWeightRecord", "utf-8"),
-    //     ],
-    //     program.programId
-    //   );
     const [depositorVoterWeightRecordKey] =
       anchor.web3.PublicKey.findProgramAddressSync(
         [
@@ -195,17 +167,7 @@ describe.only("governance-e2e", () => {
         ],
         program.programId
       );
-    // await program.methods
-    //   .createVoterWeightRecord()
-    //   .accounts({
-    //     owner: program.provider.publicKey,
-    //     registrar: registrarKey,
-    //     stakePool: stakePoolKey,
-    //     voterWeightRecord: payerVoterWeightRecordKey,
-    //     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    //     systemProgram: anchor.web3.SystemProgram.programId,
-    //   })
-    //   .rpc();
+
     await program.methods
       .createVoterWeightRecord()
       .accounts({
@@ -217,25 +179,15 @@ describe.only("governance-e2e", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
-    // await deposit(
-    //   program,
-    //   stakePoolNonce,
-    //   mintToBeStaked,
-    //   // @ts-ignore
-    //   program._provider.wallet.payer,
-    //   getAssociatedTokenAddressSync(mintToBeStaked, program.provider.publicKey),
-    //   new anchor.BN(1_000_000_000),
-    //   new anchor.BN(0),
-    //   0,
-    //   payerVoterWeightRecordKey
-    // );
+
+    const depositAmount = new anchor.BN(1_000_000_000);
     await deposit(
       program,
       stakePoolNonce,
       mintToBeStaked,
       depositor,
       getAssociatedTokenAddressSync(mintToBeStaked, depositor.publicKey),
-      new anchor.BN(1_000_000_000),
+      depositAmount,
       new anchor.BN(0),
       0,
       depositorVoterWeightRecordKey
@@ -319,12 +271,19 @@ describe.only("governance-e2e", () => {
       .rpc({ skipPreflight: true });
 
     const [voteRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [proposalAddress.toBuffer(), depositorTokenOwnerRecordKey.toBuffer()],
+      [
+        Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
+        proposalAddress.toBuffer(),
+        depositorTokenOwnerRecordKey.toBuffer(),
+      ],
       splGovernance.programId
     );
+
     await splGovernance.methods
+      // @ts-expect-error buffer-layout VecLayout does not adhere to the
+      // type anchor enum pattern so we cannot double nest the array
       .castVote({
-        approve: [[{ rank: 0, weightPercentage: 100 }]],
+        approve: [{ rank: 0, weightPercentage: 100 }],
       })
       .accounts({
         realm: realmAddress,
@@ -338,6 +297,12 @@ describe.only("governance-e2e", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .remainingAccounts([
+        // Realm Config
+        {
+          pubkey: realmConfigAddress,
+          isSigner: false,
+          isWritable: false,
+        },
         // VoterWeightRecord
         {
           pubkey: depositorVoterWeightRecordKey,
@@ -347,5 +312,10 @@ describe.only("governance-e2e", () => {
       ])
       .signers([depositor])
       .rpc({ skipPreflight: true });
+
+    const voteRecord = await splGovernance.account.voteRecordV2.fetch(
+      voteRecordKey
+    );
+    assert.equal(voteRecord.voterWeight.toString(), depositAmount.toString());
   });
 });

@@ -74,10 +74,10 @@
     "@coral-xyz/anchor" "=0.28.0"
     "@native-to-anchor/buffer-layout" "=0.1.0"
 
-"@mithraic-labs/spl-governance@^0.0.1-beta.5":
-  version "0.0.1-beta.5"
-  resolved "https://registry.yarnpkg.com/@mithraic-labs/spl-governance/-/spl-governance-0.0.1-beta.5.tgz#bd29e60dcad9ea1a4cf83c64f09a4549a56a65a0"
-  integrity sha512-7Z43VXFGPmB1u47N6/35ilPjFXl1Gi9IJ8AyhtLjm0T5LvLv/UFq9baHWzkorPOlG7OgYhcjQ14kxd9iboHy1w==
+"@mithraic-labs/spl-governance@^0.0.1-beta.6":
+  version "0.0.1-beta.6"
+  resolved "https://registry.yarnpkg.com/@mithraic-labs/spl-governance/-/spl-governance-0.0.1-beta.6.tgz#62b9bc03d023b5de160a95cb17d4a075d00aef75"
+  integrity sha512-+A4e6LkTc68D37to3uaOMEs7Uca3vmWN5RAIpBp7oekaU0o+NRG9+oOnQHoh2SSWHo83pXh7bagzqi65QTESgA==
   dependencies:
     "@coral-xyz/anchor" "^0.29.0"
     "@native-to-anchor/buffer-layout" "^0.1.0"
