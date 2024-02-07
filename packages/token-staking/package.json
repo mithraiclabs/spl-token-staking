@@ -1,6 +1,6 @@
 {
   "name": "@mithraic-labs/token-staking",
-  "version": "1.0.1-beta.3",
+  "version": "1.0.1-beta.4",
   "description": "SPL Token staking TS package",
   "main": "src/index.ts",
   "module": "src/index.ts",
@@ -28,6 +28,7 @@
     "lodash.chunk": "^4.2.0"
   },
   "devDependencies": {
+    "@types/bs58": "^4.0.4",
     "@types/lodash.chunk": "^4.2.9",
     "rollup": "^3.29.0",
     "rollup-plugin-typescript2": "^0.35.0",
