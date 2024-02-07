@@ -10,6 +10,7 @@ import {
 } from "./constants";
 import { SplTokenStaking } from "./idl";
 import { StakeDepositReceiptData, StakePool } from "./types";
+import { VOTER_WEIGHT_RECORD_LAYOUT } from "./accounts";
 
 /**
  * Calculate the digit precision loss based on the given maximum weight.
@@ -214,15 +215,33 @@ export const calculateStakeWeight = (
     baseWeight
   );
 };
+/**
+ *
+ * @param program
+ * @param address
+ * @returns
+ */
+export const fetchVoterWeightRecord = async (
+  program: anchor.Program<SplTokenStaking>,
+  address: anchor.Address
+) => {
+  const acctInfo = await program.provider.connection.getAccountInfo(
+    new anchor.web3.PublicKey(address)
+  );
+  if (!acctInfo) {
+    return null;
+  }
+  return VOTER_WEIGHT_RECORD_LAYOUT.decode(acctInfo.data);
+};
 
 /**
  * Fetch an chunked array of StakeReceipts by StakePool and optionally
  * filtered by `deposit_timestamp` using an inclusive start and end time.
- * @param program 
- * @param stakePool 
- * @param startTime - (in seconds) inclusive startTime to filter `deposit_timestamp` 
- * @param endTime - (in seconds) inclusive endTime to filter `deposit_timestamp` 
- * @returns 
+ * @param program
+ * @param stakePool
+ * @param startTime - (in seconds) inclusive startTime to filter `deposit_timestamp`
+ * @param endTime - (in seconds) inclusive endTime to filter `deposit_timestamp`
+ * @returns
  */
 export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
   program: anchor.Program<SplTokenStaking>,

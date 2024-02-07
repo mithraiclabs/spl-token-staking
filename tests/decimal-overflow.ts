@@ -9,7 +9,12 @@ import {
   MintLayout,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { SCALE_FACTOR_BASE, U64_MAX, initStakePool } from "@mithraic-labs/token-staking";
+import {
+  SCALE_FACTOR_BASE,
+  U64_MAX,
+  fetchVoterWeightRecord,
+  initStakePool,
+} from "@mithraic-labs/token-staking";
 
 describe("decimal-overflow", () => {
   const program = anchor.workspace
@@ -33,21 +38,19 @@ describe("decimal-overflow", () => {
     [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
     program.programId
   );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
-  const stakeMintAccountKey = getAssociatedTokenAddressSync(
-    stakeMint,
-    depositor.publicKey,
-    false,
-    TOKEN_PROGRAM_ID
-  );
   const mintToBeStakedAccount = getAssociatedTokenAddressSync(
     mintToBeStaked,
     depositor.publicKey,
     false,
     TOKEN_PROGRAM_ID
+  );
+  const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      stakePoolKey.toBuffer(),
+      depositor.publicKey.toBuffer(),
+      Buffer.from("voterWeightRecord", "utf-8"),
+    ],
+    program.programId
   );
   const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
   const minDuration = new anchor.BN(1000);
@@ -97,6 +100,17 @@ describe("decimal-overflow", () => {
         maxDuration
       ),
     ]);
+    await program.methods
+      .createVoterWeightRecord()
+      .accounts({
+        owner: depositor.publicKey,
+        registrar: null,
+        stakePool: stakePoolKey,
+        voterWeightRecord: voterWeightRecordKey,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
   });
 
   it("Handles max token amount scaling", async () => {
@@ -119,8 +133,7 @@ describe("decimal-overflow", () => {
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,
-        stakeMint,
-        destination: stakeMintAccountKey,
+        voterWeightRecord: voterWeightRecordKey,
         stakeDepositReceipt: stakeReceiptKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -128,13 +141,13 @@ describe("decimal-overflow", () => {
       })
       .signers([depositor])
       .rpc({ skipPreflight: true });
-    const [vault, stakeMintAccount] = await Promise.all([
+    const [vault, voterWeightRecord] = await Promise.all([
       tokenProgram.account.account.fetch(vaultKey),
-      tokenProgram.account.account.fetch(stakeMintAccountKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
     ]);
     assert.equal(vault.amount.toString(), U64_MAX.toString());
     assert.equal(
-      stakeMintAccount.amount.toString(),
+      voterWeightRecord.voterWeight.toString(),
       // we lose a digit of precision due to the max weight being greater than 1,
       // so we must divide by 10 after scaling.
       ((U64_MAX * BigInt(4)) / BigInt(10)).toString()

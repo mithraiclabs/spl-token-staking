@@ -1,10 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::errors::ErrorCode;
-use crate::stake_pool_signer_seeds;
-use crate::state::{StakeDepositReceipt, StakePool};
-use crate::state::u128;
+use crate::state::{u128, StakeDepositReceipt, StakePool, VoterWeightRecord};
 
 #[derive(Accounts)]
 #[instruction(nonce: u32)]
@@ -12,13 +10,13 @@ pub struct Deposit<'info> {
     // Payer to actually stake the mint tokens
     #[account(mut)]
     pub payer: Signer<'info>,
-    
+
     /// Owner of the StakeDepositReceipt, which may differ
     /// from the account staking.
     /// CHECK: No check needed since this account will own the StakeReceipt.
     pub owner: UncheckedAccount<'info>,
 
-    /// Token Account to transfer stake_mint from, to be deposited into the vault
+    /// Token Account to transfer StakePool's `mint` token from, to be deposited into the vault
     #[account(mut)]
     pub from: Account<'info, TokenAccount>,
 
@@ -26,21 +24,27 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
 
-    #[account(mut)]
-    pub stake_mint: Account<'info, Mint>,
-
-    /// Token account the StakePool token will be transfered to
+    /// VoterWeightRecord which caches the total weighted stake for the owner.
+    /// In order to allow StakePools to add Governance in the future, this
+    /// is required even when the StakePool does not have a `Registrar`.
     #[account(
-      mut,
-      has_one = owner @ ErrorCode::InvalidAuthority
+        mut,
+        // Must enforce the VWR and StakeReceipt owner will be the same. This enforces VWR as an accumulator for the
+        // owner's total stake weight for the stake_pool.
+        seeds = [
+            stake_pool.key().as_ref(),
+            owner.key().as_ref(),
+            b"voterWeightRecord".as_ref()
+        ],
+        bump,
+        constraint = voter_weight_record.governing_token_owner == owner.key() @ ErrorCode::InvalidOwner
     )]
-    pub destination: Account<'info, TokenAccount>,
+    pub voter_weight_record: Account<'info, VoterWeightRecord>,
 
     /// StakePool owning the vault that will receive the deposit
     #[account(
       mut,
       has_one = vault @ ErrorCode::InvalidStakePoolVault,
-      has_one = stake_mint @ ErrorCode::InvalidAuthority,
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
 
@@ -64,7 +68,7 @@ pub struct Deposit<'info> {
 }
 
 impl<'info> Deposit<'info> {
-    /// Transfer the stake_mint from the payer's address to the StakePool vault.
+    /// Transfer the StakePool's `mint` from the payer's address to the StakePool vault.
     pub fn transfer_from_user_to_stake_vault(&self, amount: u64) -> Result<()> {
         let cpi_ctx = CpiContext::new(
             self.token_program.to_account_info(),
@@ -76,26 +80,10 @@ impl<'info> Deposit<'info> {
         );
         token::transfer(cpi_ctx, amount)
     }
-
-    pub fn mint_staked_token_to_user(&self, effective_amount: u64) -> Result<()> {
-        let stake_pool = self.stake_pool.load()?;
-        let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
-        let cpi_ctx = CpiContext::new_with_signer(
-            self.token_program.to_account_info(),
-            MintTo {
-                mint: self.stake_mint.to_account_info(),
-                to: self.destination.to_account_info(),
-                authority: self.stake_pool.to_account_info(),
-            },
-            signer_seeds,
-        );
-
-        token::mint_to(cpi_ctx, effective_amount)
-    }
 }
 
 pub fn handler<'info>(
-    ctx: Context<Deposit>,
+    ctx: Context<'_, '_, 'info, 'info, Deposit>,
     _nonce: u32,
     amount: u64,
     lockup_duration: u64,
@@ -140,7 +128,11 @@ pub fn handler<'info>(
         ctx.accounts.stake_deposit_receipt.effective_stake_u128(),
         stake_pool.max_weight,
     );
-    ctx.accounts
-        .mint_staked_token_to_user(effect_amount_staked_tokens)?;
+    // Increment VoterWeightRecord to cache the total amount of weighted stake.
+    let voter_weight_record = &mut ctx.accounts.voter_weight_record;
+    voter_weight_record.voter_weight = voter_weight_record
+        .voter_weight
+        .checked_add(effect_amount_staked_tokens)
+        .unwrap();
     Ok(())
 }

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 pub mod errors;
+mod governance;
 pub mod instructions;
 pub mod macros;
 pub mod math;
@@ -22,6 +23,7 @@ pub mod spl_token_staking {
         max_weight: u64,
         min_duration: u64,
         max_duration: u64,
+        registrar: Option<Pubkey>,
     ) -> Result<()> {
         initialize_stake_pool::handler(
             ctx,
@@ -29,6 +31,7 @@ pub mod spl_token_staking {
             max_weight,
             min_duration,
             max_duration,
+            registrar,
         )
     }
 
@@ -40,7 +43,7 @@ pub mod spl_token_staking {
     }
 
     /// Add a [RewardPool](state::RewardPool) to an existing [StakePool](state::StakePool).
-    /// 
+    ///
     /// Can only be invoked by the StakePool's authority.
     pub fn add_reward_pool(ctx: Context<AddRewardPool>, index: u8) -> Result<()> {
         add_reward_pool::handler(ctx, index)
@@ -48,20 +51,20 @@ pub mod spl_token_staking {
 
     /// Deposit (aka Stake) a wallet's tokens to the specified [StakePool](state::StakePool).
     /// Depending on the `lockup_duration` and the StakePool's weighting configuration, the
-    /// wallet initiating the deposit will receive tokens representing their effective stake 
+    /// wallet initiating the deposit will receive tokens representing their effective stake
     /// (i.e. deposited amount multiplied by the lockup weight).
-    /// 
-    /// For each RewardPool, the latest amount per effective stake will be recalculated to ensure 
+    ///
+    /// For each RewardPool, the latest amount per effective stake will be recalculated to ensure
     /// the latest accumulated rewards are attributed to all previous depositors and not the deposit
     /// resulting from this instruction.
-    /// 
+    ///
     /// A [StakeDepositReceipt](state::StakeDepositReceipt) will be created to track the
     /// lockup duration, effective weight, and claimable rewards.
-    /// 
+    ///
     /// Remaining accounts are required: pass the `reward_vault` of each reward pool. These must be
     /// passed in the same order as `StakePool.reward_pools`
-    pub fn deposit(
-        ctx: Context<Deposit>,
+    pub fn deposit<'info>(
+        ctx: Context<'_, '_, 'info, 'info, Deposit>,
         nonce: u32,
         amount: u64,
         lockup_duration: u64,
@@ -70,33 +73,47 @@ pub mod spl_token_staking {
     }
 
     /// Claim unclaimed rewards from all RewardPools for a specific StakeDepositReceipt.
-    /// 
-    /// For each RewardPool, the latest amount per effective stake will be recalculated to ensure 
+    ///
+    /// For each RewardPool, the latest amount per effective stake will be recalculated to ensure
     /// the latest accumulated rewards are accounted for in the claimable amount. The StakeDepositReceipt
     /// is also updated so that the latest claimed amount is equivalent, so that their claimable amount
-    /// is 0 after invoking the claim instruction. 
-    pub fn claim_all<'info>(ctx: Context<'_, '_, '_, 'info, ClaimAll<'info>>) -> Result<()> {
+    /// is 0 after invoking the claim instruction.
+    pub fn claim_all<'info>(ctx: Context<'_, '_, 'info, 'info, ClaimAll<'info>>) -> Result<()> {
         claim_all::handler(ctx)
     }
 
     /// Withdraw (aka Unstake) a wallet's tokens for a specific StakeDepositReceipt. The StakePool's
     /// total weighted stake will be decreased by the effective stake amount of the StakeDepositReceipt
     /// and the original amount deposited will be transferred out of the vault.
-    /// 
+    ///
     /// All rewards will be claimed. So, for each RewardPool, the latest amount per effective stake will
     /// be recalculated to ensure the latest accumulated rewards are accounted for in the claimable amount.
     /// The StakeDepositReceipt is also updated so that the latest claimed amount is equivalent, so that
     /// their claimable amount is 0 after invoking the withdraw instruction.
-    /// 
+    ///
     /// StakeDepositReceipt account is closed after this instruction.
-    /// 
+    ///
     /// Remaining accounts are required: pass the `reward_vault` of each reward pool. These must be
     /// passed in the same order as `StakePool.reward_pools`. The owner (the token account which
     /// gains the withdrawn funds) must also be passed be, in pairs like so:
     /// * `<reward_vault[0]><owner[0]>`
     /// * `<reward_vault[1]><owner[1]>
     /// * ...etc
-    pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
+    pub fn withdraw<'info>(ctx: Context<'_, '_, 'info, 'info, Withdraw<'info>>) -> Result<()> {
         withdraw::handler(ctx)
+    }
+
+    /* Governance addin instructions */
+
+    /// Create a voting registrar for a Realms instance.
+    pub fn create_registrar<'info>(
+        ctx: Context<CreateRegistrar>,
+        registrar_bump: u8,
+    ) -> Result<()> {
+        create_registrar::handler(ctx, registrar_bump)
+    }
+
+    pub fn create_voter_weight_record<'info>(ctx: Context<CreateVoterWeightRecord>) -> Result<()> {
+        create_voter_weight_record::handler(ctx)
     }
 }

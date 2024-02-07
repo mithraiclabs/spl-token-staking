@@ -1,3 +1,4 @@
+export * from "./accounts";
 export * from "./constants";
 export * from "./idl_v0";
 export * from "./idl";

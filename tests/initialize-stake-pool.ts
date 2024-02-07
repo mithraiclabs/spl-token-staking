@@ -2,19 +2,72 @@ import * as anchor from "@coral-xyz/anchor";
 import { SPL_TOKEN_PROGRAM_ID, splTokenProgram } from "@coral-xyz/spl-token";
 import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { assert } from "chai";
-import { TEST_MINT_DECIMALS, mintToBeStaked } from "./hooks";
-import { SCALE_FACTOR_BASE } from "@mithraic-labs/token-staking";
+import { mintToBeStaked } from "./hooks";
+import {
+  SCALE_FACTOR_BASE,
+  createRegistrar,
+} from "@mithraic-labs/token-staking";
 import { TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
 import {
   assertBNEqual,
   assertKeyDefault,
   assertKeysEqual,
 } from "./genericTests";
+import { createRealm } from "./utils";
+import {
+  GOVERNANCE_PROGRAM_ID,
+  GOVERNANCE_PROGRAM_SEED,
+  createSplGovernanceProgram,
+} from "@mithraic-labs/spl-governance";
 
 describe("initialize-stake-pool", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgramInstance = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
+  const splGovernance = createSplGovernanceProgram(
+    // @ts-ignore
+    program._provider.wallet,
+    program.provider.connection,
+    GOVERNANCE_PROGRAM_ID
+  );
+  const realmName = "init-stakepool-realm";
+  const [realmAddress] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(GOVERNANCE_PROGRAM_SEED, "utf-8"),
+      Buffer.from(realmName, "utf-8"),
+    ],
+    splGovernance.programId
+  );
+  const realmGoverningTokenMint = mintToBeStaked;
+  const [registrarKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      realmAddress.toBuffer(),
+      realmGoverningTokenMint.toBuffer(),
+      Buffer.from("registrar", "utf-8"),
+    ],
+    program.programId
+  );
+
+  before(async () => {
+    // create realm and registrar
+    const realmAuthority = program.provider.publicKey;
+    await createRealm(
+      // @ts-ignore
+      splGovernance,
+      realmName,
+      realmGoverningTokenMint,
+      realmAuthority,
+      program.programId
+    );
+    await createRegistrar(
+      // @ts-ignore
+      program,
+      realmAddress,
+      realmGoverningTokenMint,
+      splGovernance.programId,
+      realmAuthority
+    );
+  });
 
   it("StakePool initialized - happy path", async () => {
     const nonce = 1;
@@ -27,10 +80,6 @@ describe("initialize-stake-pool", () => {
       ],
       program.programId
     );
-    const [stakeMintKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-      program.programId
-    );
     const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
       program.programId
@@ -41,11 +90,16 @@ describe("initialize-stake-pool", () => {
     const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
     const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
     await program.methods
-      .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
+      .initializeStakePool(
+        nonce,
+        maxWeight,
+        minDuration,
+        maxDuration,
+        registrarKey
+      )
       .accounts({
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,
-        stakeMint: stakeMintKey,
         mint: mintToBeStaked,
         vault: vaultKey,
         tokenProgram: SPL_TOKEN_PROGRAM_ID,
@@ -53,27 +107,23 @@ describe("initialize-stake-pool", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
-    const [stakeMintAccount, vault, stakePool] = await Promise.all([
-      getMint(program.provider.connection, stakeMintKey),
+    const [vault, stakePool] = await Promise.all([
       tokenProgramInstance.account.account.fetch(vaultKey),
       program.account.stakePool.fetch(stakePoolKey),
     ]);
 
-    assert.isNotNull(stakeMintAccount);
     /*
       Shift 1 computed (see `getDigitShift`):
       max: 4_000_000_000n, base: 1_000_000_000n
       4,000,000,000 * 18446744073709551615 / 1,000,000,000 / 10^0 > 18446744073709551615
       4,000,000,000 * 18446744073709551615 / 1,000,000,000 / 10^1 < 18446744073709551615
     */
-    assert.equal(stakeMintAccount.decimals, TEST_MINT_DECIMALS - 1);
-    assertKeysEqual(stakeMintAccount.mintAuthority, stakePoolKey);
     assertKeysEqual(vault.owner, stakePoolKey);
     assert.isNotNull(vault);
     assertKeysEqual(stakePool.authority, program.provider.publicKey);
     assertKeysEqual(stakePool.mint, mintToBeStaked);
-    assertKeysEqual(stakePool.stakeMint, stakeMintKey);
     assertKeysEqual(stakePool.vault, vaultKey);
+    assertKeysEqual(stakePool.registrar, registrarKey);
     assertKeysEqual(stakePool.creator, program.provider.publicKey);
     // Nothing staked yet
     assertBNEqual(new anchor.BN(stakePool.totalWeightedStake), 0);
@@ -101,10 +151,6 @@ describe("initialize-stake-pool", () => {
       ],
       program.programId
     );
-    const [stakeMintKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-      program.programId
-    );
     const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
       program.programId
@@ -115,11 +161,10 @@ describe("initialize-stake-pool", () => {
     // 10_000_000_000_000_000_000 exceeds the max shift of 1_000_000_000_000_000_000
     const maxWeight = new anchor.BN("10000000000000000000");
     await program.methods
-      .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
+      .initializeStakePool(nonce, maxWeight, minDuration, maxDuration, null)
       .accounts({
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,
-        stakeMint: stakeMintKey,
         mint: mintToBeStaked,
         vault: vaultKey,
         tokenProgram: SPL_TOKEN_PROGRAM_ID,
@@ -127,8 +172,7 @@ describe("initialize-stake-pool", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
-    const [stakeMintAccount, vault, stakePool] = await Promise.all([
-      getMint(program.provider.connection, stakeMintKey),
+    const [vault, stakePool] = await Promise.all([
       program.provider.connection.getAccountInfo(vaultKey),
       program.account.stakePool.fetch(stakePoolKey),
     ]);
@@ -136,7 +180,7 @@ describe("initialize-stake-pool", () => {
       Shift max computed:
       1_000_000_000_000_000_000 * 18446744073709551615 / 1,000,000,000 / 10^9 > 18446744073709551615
     */
-    assert.equal(stakeMintAccount.decimals, 0);
+    assertKeysEqual(stakePool.registrar, anchor.web3.PublicKey.default);
   });
 
   it("StakePool initialized with separate payer & authority", async () => {
@@ -151,10 +195,6 @@ describe("initialize-stake-pool", () => {
       ],
       program.programId
     );
-    const [stakeMintKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-      program.programId
-    );
     const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
       program.programId
@@ -164,12 +204,11 @@ describe("initialize-stake-pool", () => {
     const maxDuration = new anchor.BN(31536000); // 1 year in seconds
     const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
     await program.methods
-      .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
+      .initializeStakePool(nonce, maxWeight, minDuration, maxDuration, null)
       .accounts({
         payer: program.provider.publicKey,
         authority: authority.publicKey,
         stakePool: stakePoolKey,
-        stakeMint: stakeMintKey,
         mint: mintToBeStaked,
         vault: vaultKey,
         tokenProgram: SPL_TOKEN_PROGRAM_ID,
@@ -177,13 +216,11 @@ describe("initialize-stake-pool", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .rpc();
-    const [stakeMintAccount, vault, stakePool] = await Promise.all([
-      getMint(program.provider.connection, stakeMintKey),
+    const [vault, stakePool] = await Promise.all([
       tokenProgramInstance.account.account.fetch(vaultKey),
       program.account.stakePool.fetch(stakePoolKey),
     ]);
 
-    assert.isNotNull(stakeMintAccount);
     // assert the authority is the newly created authority (not payer)
     assertKeysEqual(stakePool.authority, authority.publicKey);
   });

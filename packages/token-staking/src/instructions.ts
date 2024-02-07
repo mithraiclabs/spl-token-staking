@@ -14,6 +14,7 @@ import { SplTokenStakingV0 } from "./idl_v0";
  * @param minDuration
  * @param maxDuration
  * @param authority - defaults to `program.provider.publicKey`
+ * @param registar - Registrar key if this StakePool uses SPL-Governance
  */
 export const initStakePool = async (
   program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
@@ -22,7 +23,8 @@ export const initStakePool = async (
   maxWeight = new anchor.BN(SCALE_FACTOR_BASE.toString()),
   minDuration = new anchor.BN(0),
   maxDuration = new anchor.BN("18446744073709551615"),
-  authority?: anchor.Address
+  authority?: anchor.Address,
+  registrar: anchor.web3.PublicKey | null = null,
 ) => {
   const _authority = authority
     ? new anchor.web3.PublicKey(authority)
@@ -36,21 +38,16 @@ export const initStakePool = async (
     ],
     program.programId
   );
-  const [stakeMintKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
-    program.programId
-  );
   const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
     program.programId
   );
   await program.methods
-    .initializeStakePool(nonce, maxWeight, minDuration, maxDuration)
+    .initializeStakePool(nonce, maxWeight, minDuration, maxDuration, registrar)
     .accounts({
       payer: program.provider.publicKey,
       authority: _authority,
       stakePool: stakePoolKey,
-      stakeMint: stakeMintKey,
       mint,
       vault: vaultKey,
       tokenProgram: SPL_TOKEN_PROGRAM_ID,
@@ -120,7 +117,6 @@ export const addRewardPool = async (
  * @param owner
  * @param stakePoolKey
  * @param from
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -133,7 +129,6 @@ export const createStakeBuilder = (
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
   from: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -145,10 +140,6 @@ export const createStakeBuilder = (
       : stakePoolKey;
   const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [_stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-    program.programId
-  );
-  const [stakeMint] = anchor.web3.PublicKey.findProgramAddressSync(
-    [_stakePoolKey.toBuffer(), Buffer.from("stakeMint", "utf-8")],
     program.programId
   );
   const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -169,8 +160,6 @@ export const createStakeBuilder = (
       from,
       stakePool: stakePoolKey,
       vault: vaultKey,
-      stakeMint,
-      destination: stakeMintAccount,
       stakeDepositReceipt: stakeReceiptKey,
       tokenProgram: SPL_TOKEN_PROGRAM_ID,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -191,7 +180,6 @@ export const createStakeBuilder = (
  * @param owner
  * @param stakePoolKey
  * @param from
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -204,7 +192,6 @@ export const createStakeInstruction = async (
   owner: anchor.web3.PublicKey,
   stakePoolkey: anchor.Address,
   from: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -216,7 +203,6 @@ export const createStakeInstruction = async (
     owner,
     stakePoolkey,
     from,
-    stakeMintAccount,
     amount,
     duration,
     receiptNonce,
@@ -231,7 +217,6 @@ export const createStakeInstruction = async (
  * @param owner
  * @param stakePoolKey
  * @param from
- * @param stakeMintAccount
  * @param amount
  * @param duration
  * @param receiptNonce
@@ -244,7 +229,6 @@ export const deposit = async (
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
   from: anchor.Address,
-  stakeMintAccount: anchor.Address,
   amount: anchor.BN,
   duration: anchor.BN,
   receiptNonce: number,
@@ -263,7 +247,6 @@ export const deposit = async (
     owner,
     stakePoolKey,
     from,
-    stakeMintAccount,
     amount,
     duration,
     receiptNonce,
@@ -271,5 +254,37 @@ export const deposit = async (
   )
     .preInstructions(options.preInstructions)
     .postInstructions(options.postInstructions)
+    .rpc({ skipPreflight: true });
+};
+
+/* Governance plugin related instructions */
+export const createRegistrar = async (
+  program: anchor.Program<SplTokenStaking>,
+  realmAddress: anchor.Address,
+  realmGoverningTokenMint: anchor.Address,
+  governanceProgramId: anchor.Address,
+  realmAuthority: anchor.Address
+) => {
+  const [registrarKey, registrarBump] =
+    anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        new anchor.web3.PublicKey(realmAddress).toBuffer(),
+        new anchor.web3.PublicKey(realmGoverningTokenMint).toBuffer(),
+        Buffer.from("registrar", "utf-8"),
+      ],
+      program.programId
+    );
+  await program.methods
+    .createRegistrar(registrarBump)
+    .accounts({
+      payer: program.provider.publicKey,
+      registrar: registrarKey,
+      realm: realmAddress,
+      governanceProgramId,
+      realmGoverningTokenMint,
+      realmAuthority,
+      systemProgram: anchor.web3.SystemProgram.programId,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
     .rpc({ skipPreflight: true });
 };

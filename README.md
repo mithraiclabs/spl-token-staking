@@ -15,6 +15,13 @@ Caveats:
 - Un-staking is all or none
 - Precision loss: based on the `max_weight` or largest scalar of the deposited amount, we must truncate some precision in order to fit it into a `u64` for the SPL Token representation of effective stake weight. To do this, we calculate the minimum number of digits that must be truncated to fit into the `u64::MAX` based on the given `max_weight`.
 
+## SPL Governance addin TODO
+[] CreateRegistrar IX
+[] Add Registrar to StakePool
+[] UpdateVoterWeightRecord IX
+[] UpdateMaxVoterWeightRecord IX
+[] Remove Stake representation mint
+
 ### State
 
 **RewardPool**
@@ -43,8 +50,6 @@ Note, this is not equal to the amount of SPL Tokens staked. */
 total_weighted_stake: u128,
 /** Token Account to store the staked SPL Token */
 vault: Pubkey,
-/** Mint of the token representing effective stake */
-stake_mint: Pubkey,
 /** Array of RewardPools that apply to the stake pool */
 reward_pools: Vec<RewardPool>,
 /** Base weight for staking lockup. In terms of 1 / SCALE_FACTOR_BASE */
@@ -57,7 +62,7 @@ min_duration: u64,
 max_duration: u64,
 /** Nonce to derive multiple stake pools from same mint */
 nonce: u8,
-/** Bump seed for stake_mint */
+/** Bump seed for StakePool */
 bump_seed: u8,
 ```
 
@@ -83,12 +88,31 @@ Indexes align with the StakedPool reward_pools property. */
 claimed_amounts: Vec<u128>
 ```
 
+**Registrar**
+
+```rust
+/** Governance program ID */
+governance_program_id: Pubkey,
+/** Realm instance Registrar belongs to */
+realm: Pubkey,
+/** Governing token mint for Realm instance */
+realm_governing_token_mint: Pubkey,
+/** Authority for the realm config */
+realm_authority: Pubkey,
+bump: u8,
+```
+
 ## Instructions
+
+## CreateRegistrar
+- Create a `Registrar` where the effective stake will be used as voting power
+
+## CreateVoterWeightRecord
+- Creates a `VoterWeightRecord` account to store effective stake counter
 
 ## InitStakePool
 
 - Create the **StakePool** account
-- Init **stake_mint** SPL Token
 
 ## AddRewardPool
 
@@ -106,7 +130,7 @@ claimed_amounts: Vec<u128>
   - Calculate the effective stake weight based on lockup duration
   - store `rewards_per_effective_stake` of each RewardPool in `claimed_amounts`
 - Increment **StakePool** `total_weighted_stake`
-- Transfer effective stake amount of **StakePool** `stake_mint` to owner
+- Increment VoterWeightRecord
 
 ## ClaimAll
 
@@ -125,7 +149,7 @@ claimed_amounts: Vec<u128>
 - Validations
   - **StakeDepositReceipt** `owner` is Signer
   - **StakeDepositReceipt** and **StakePool** match
-- Burn effective stake amount of **StakePool** `stake_mint` from `owner`
+- Decrement VoterWeightRecord
 - Claim any leftover rewards
 - Decrement **StakePool** `total_weighted_stake` by `total_weighted_stake`
 - Transfer `deposit_amount` from `vault` to `owner`

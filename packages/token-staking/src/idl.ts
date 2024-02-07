@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "1.1.1",
+  version: "2.0.0",
   name: "spl_token_staking",
   instructions: [
     {
@@ -37,12 +37,6 @@ export const _SplTokenStakingIDL = {
           name: "stakePool",
           isMut: true,
           isSigner: false,
-        },
-        {
-          name: "stakeMint",
-          isMut: true,
-          isSigner: false,
-          docs: ["An SPL token Mint for the effective stake weight token"],
         },
         {
           name: "vault",
@@ -82,6 +76,12 @@ export const _SplTokenStakingIDL = {
         {
           name: "maxDuration",
           type: "u64",
+        },
+        {
+          name: "registrar",
+          type: {
+            option: "publicKey",
+          },
         },
       ],
     },
@@ -214,7 +214,7 @@ export const _SplTokenStakingIDL = {
           isMut: true,
           isSigner: false,
           docs: [
-            "Token Account to transfer stake_mint from, to be deposited into the vault",
+            "Token Account to transfer StakePool's `mint` token from, to be deposited into the vault",
           ],
         },
         {
@@ -224,15 +224,14 @@ export const _SplTokenStakingIDL = {
           docs: ["Vault of the StakePool token will be transfer to"],
         },
         {
-          name: "stakeMint",
+          name: "voterWeightRecord",
           isMut: true,
           isSigner: false,
-        },
-        {
-          name: "destination",
-          isMut: true,
-          isSigner: false,
-          docs: ["Token account the StakePool token will be transfered to"],
+          docs: [
+            "VoterWeightRecord which caches the total weighted stake for the owner.",
+            "In order to allow StakePools to add Governance in the future, this",
+            "is required even when the StakePool does not have a `Registrar`.",
+          ],
         },
         {
           name: "stakePool",
@@ -377,24 +376,130 @@ export const _SplTokenStakingIDL = {
           docs: ["Vault of the StakePool token will be transferred from"],
         },
         {
-          name: "stakeMint",
+          name: "voterWeightRecord",
           isMut: true,
           isSigner: false,
-          docs: ["stake_mint of StakePool that will be burned"],
-        },
-        {
-          name: "from",
-          isMut: true,
-          isSigner: false,
-          docs: [
-            "Token Account holding weighted stake representation token to burn",
-          ],
         },
         {
           name: "destination",
           isMut: true,
           isSigner: false,
           docs: ["Token account to transfer the previously staked token to"],
+        },
+      ],
+      args: [],
+    },
+    {
+      name: "createRegistrar",
+      docs: ["Create a voting registrar for a Realms instance."],
+      accounts: [
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+        },
+        {
+          name: "registrar",
+          isMut: true,
+          isSigner: false,
+          docs: [
+            "The voting registrar. There can only be a single registrar",
+            "per governance realm and governing mint.",
+          ],
+        },
+        {
+          name: "realm",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "An spl-governance realm",
+            "",
+            "- realm is owned by the governance_program_id",
+            "- realm_governing_token_mint must be the community or council mint",
+            "- realm_authority is realm.authority",
+          ],
+        },
+        {
+          name: "governanceProgramId",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "The program id of the spl-governance program the realm belongs to.",
+          ],
+        },
+        {
+          name: "realmGoverningTokenMint",
+          isMut: false,
+          isSigner: false,
+          docs: ["Either the realm community mint or the council mint."],
+        },
+        {
+          name: "realmAuthority",
+          isMut: false,
+          isSigner: true,
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: "registrarBump",
+          type: "u8",
+        },
+      ],
+    },
+    {
+      name: "createVoterWeightRecord",
+      accounts: [
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+          docs: ["Payer of rent"],
+        },
+        {
+          name: "owner",
+          isMut: false,
+          isSigner: false,
+          docs: [
+            "Owner of the VoterStakeRecord and the subsequent StakeDepositReceipts",
+          ],
+        },
+        {
+          name: "registrar",
+          isMut: false,
+          isSigner: false,
+          isOptional: true,
+          docs: ["Registrar for the applicable realm"],
+        },
+        {
+          name: "stakePool",
+          isMut: false,
+          isSigner: false,
+          docs: ["StakePool the VoterWeightRecord will be associated with."],
+        },
+        {
+          name: "voterWeightRecord",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false,
         },
       ],
       args: [],
@@ -436,8 +541,10 @@ export const _SplTokenStakingIDL = {
             type: "publicKey",
           },
           {
-            name: "stakeMint",
-            docs: ["Mint of the token representing effective stake"],
+            name: "registrar",
+            docs: [
+              "Registrar of the spl-governance realm this StakePool will be used for",
+            ],
             type: "publicKey",
           },
           {
@@ -496,7 +603,7 @@ export const _SplTokenStakingIDL = {
           },
           {
             name: "bumpSeed",
-            docs: ["Bump seed for stake_mint"],
+            docs: ["Bump seed for stake_pool"],
             type: "u8",
           },
           {
@@ -527,6 +634,11 @@ export const _SplTokenStakingIDL = {
           {
             name: "payer",
             docs: ["Pubkey that paid for the deposit"],
+            type: "publicKey",
+          },
+          {
+            name: "voterWeightRecord",
+            docs: ["VoterWeightRecord this stake belongs to"],
             type: "publicKey",
           },
           {
@@ -563,6 +675,39 @@ export const _SplTokenStakingIDL = {
             type: {
               array: ["u128", 10],
             },
+          },
+        ],
+      },
+    },
+    {
+      name: "registrar",
+      docs: ["Instance of a voting rights distributor."],
+      type: {
+        kind: "struct",
+        fields: [
+          {
+            name: "governanceProgramId",
+            docs: ["Governance program ID"],
+            type: "publicKey",
+          },
+          {
+            name: "realm",
+            docs: ["Realm instance Registrar belongs to"],
+            type: "publicKey",
+          },
+          {
+            name: "realmGoverningTokenMint",
+            docs: ["Governing token mint for Realm instance"],
+            type: "publicKey",
+          },
+          {
+            name: "realmAuthority",
+            docs: ["Authority for the realm config"],
+            type: "publicKey",
+          },
+          {
+            name: "bump",
+            type: "u8",
           },
         ],
       },
@@ -644,28 +789,38 @@ export const _SplTokenStakingIDL = {
     },
     {
       code: 6008,
-      name: "InvalidStakeMint",
-      msg: "Invalid stake mint",
-    },
-    {
-      code: 6009,
       name: "StakeStillLocked",
       msg: "Stake is still locked",
     },
     {
-      code: 6010,
+      code: 6009,
       name: "InvalidStakePoolDuration",
       msg: "Max duration must be great than min",
     },
     {
-      code: 6011,
+      code: 6010,
       name: "InvalidStakePoolWeight",
       msg: "Max weight must be great than min",
     },
     {
-      code: 6012,
+      code: 6011,
       name: "DurationTooShort",
       msg: "Duration too short",
+    },
+    {
+      code: 6012,
+      name: "InvalidRealmAuthority",
+      msg: "Realm Authority is invalid",
+    },
+    {
+      code: 6013,
+      name: "InvalidRegistrar",
+      msg: "Registrar is invalid",
+    },
+    {
+      code: 6014,
+      name: "StakePoolRegistrarMismatch",
+      msg: "Registrar must match StakePool registrar",
     },
   ],
 } as const;

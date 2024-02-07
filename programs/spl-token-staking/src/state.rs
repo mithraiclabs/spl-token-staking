@@ -4,7 +4,12 @@ use bytemuck::{Pod, Zeroable};
 use core::primitive;
 use jet_proc_macros::assert_size;
 
-use crate::{errors::ErrorCode, math::U192};
+use crate::{errors::ErrorCode, math::U192, vote_weight_record};
+
+// Generate a VoteWeightRecord Anchor wrapper, owned by the current program.
+// VoteWeightRecords are unique in that they are defined by the SPL governance
+// program, but they are actually owned by this program.
+vote_weight_record!(crate::ID);
 
 // REVIEW: What's the theoretical limit of Reward pools? What's the limiting factor (e.g. CU)?
 //  Wondering because a single StakePool could only ever provide 5 different assets as rewards.
@@ -99,8 +104,8 @@ pub struct StakePool {
     pub vault: Pubkey,
     /** Mint of the token being staked */
     pub mint: Pubkey,
-    /** Mint of the token representing effective stake */
-    pub stake_mint: Pubkey,
+    /** Registrar of the spl-governance realm this StakePool will be used for */
+    pub registrar: Pubkey,
     /// Array of RewardPools that apply to the stake pool.
     /// Unused entries are Pubkey default. In arbitrary order, and may have gaps.
     pub reward_pools: [RewardPool; MAX_REWARD_POOLS],
@@ -120,7 +125,7 @@ pub struct StakePool {
     pub max_duration: u64,
     /** Nonce to derive multiple stake pools from same mint */
     pub nonce: u8,
-    /** Bump seed for stake_mint */
+    /** Bump seed for stake_pool */
     pub bump_seed: u8,
     // padding to next 8-byte
     _padding0: [u8; 6],
@@ -153,7 +158,7 @@ impl StakePool {
     /// iteration
     pub fn recalculate_rewards_per_effective_stake<'info>(
         &mut self,
-        remaining_accounts: &[AccountInfo<'info>],
+        remaining_accounts: &'info [AccountInfo<'info>],
         reward_vault_account_offset: usize,
     ) -> Result<()> {
         let total_weighted_stake = self.total_weighted_stake_u128();
@@ -277,6 +282,8 @@ pub struct StakeDepositReceipt {
     pub owner: Pubkey,
     /** Pubkey that paid for the deposit */
     pub payer: Pubkey,
+    /** VoterWeightRecord this stake belongs to */
+    pub voter_weight_record: Pubkey,
     /** StakePool the deposit is for */
     pub stake_pool: Pubkey,
     /** Duration of the lockup period in seconds */
@@ -340,6 +347,25 @@ impl StakeDepositReceipt {
         Ok(())
     }
 }
+
+// Governance addin related state
+
+/// Instance of a voting rights distributor.
+#[account(zero_copy)]
+#[derive(Default)]
+pub struct Registrar {
+    /** Governance program ID */
+    pub governance_program_id: Pubkey,
+    /** Realm instance Registrar belongs to */
+    pub realm: Pubkey,
+    /** Governing token mint for Realm instance */
+    pub realm_governing_token_mint: Pubkey,
+    /** Authority for the realm config */
+    pub realm_authority: Pubkey,
+    pub bump: u8,
+}
+
+// End Governance addin related state
 
 #[cfg(test)]
 mod tests {
@@ -427,5 +453,4 @@ mod tests {
         let max_duration = stake_pool.max_duration;
         assert_eq!(stake_pool.get_stake_weight(max_duration + 1), base_weight);
     }
-
 }
