@@ -28,7 +28,7 @@ export const deposit = async (
   duration: anchor.BN,
   receiptNonce: number,
   voterWeightRecord: anchor.Address,
-  rewardVaults: anchor.web3.PublicKey[] = [],
+  rewardVaults: anchor.web3.PublicKey[] = []
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -111,7 +111,7 @@ export const createRealm = (
   return program.methods
     .createRealm(realmName, {
       communityTokenConfigArgs: {
-        useVoterWeightAddin: true,
+        useVoterWeightAddin: !!voterWeightAddinAddress,
         useMaxVoterWeightAddin: false,
         tokenType: { liquid: {} },
       },
