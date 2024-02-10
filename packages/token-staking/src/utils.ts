@@ -215,20 +215,12 @@ export const calculateStakeWeight = (
   );
 };
 
-/**
- * Fetch an chunked array of StakeReceipts by StakePool and optionally
- * filtered by `deposit_timestamp` using an inclusive start and end time.
- * @param program 
- * @param stakePool 
- * @param startTime - (in seconds) inclusive startTime to filter `deposit_timestamp` 
- * @param endTime - (in seconds) inclusive endTime to filter `deposit_timestamp` 
- * @returns 
- */
-export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
+export const fetchChunkedListOfStakeReceiptKeysWithinTimeFrame = async (
   program: anchor.Program<SplTokenStaking>,
   stakePool: anchor.Address,
   startTime: number | string = 0,
-  endTime: number | string = Number.MAX_SAFE_INTEGER
+  endTime: number | string = Number.MAX_SAFE_INTEGER,
+  pageCount = 50
 ) => {
   const startTimeBN = new anchor.BN(startTime);
   const endTimeBN = new anchor.BN(endTime);
@@ -263,7 +255,31 @@ export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
   const keyList = accountInfosWithinTimeframe.map((a) => a.pubkey);
 
   // allow 50 per fetchMultiple
-  const chunkedKeys = _chunk(keyList, 50);
+  return _chunk(keyList, pageCount);
+};
+
+/**
+ * Fetch an chunked array of StakeReceipts by StakePool and optionally
+ * filtered by `deposit_timestamp` using an inclusive start and end time.
+ * @param program
+ * @param stakePool
+ * @param startTime - (in seconds) inclusive startTime to filter `deposit_timestamp`
+ * @param endTime - (in seconds) inclusive endTime to filter `deposit_timestamp`
+ * @returns
+ */
+export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
+  program: anchor.Program<SplTokenStaking>,
+  stakePool: anchor.Address,
+  startTime: number | string = 0,
+  endTime: number | string = Number.MAX_SAFE_INTEGER
+) => {
+  // allow 50 per fetchMultiple
+  const chunkedKeys = await fetchChunkedListOfStakeReceiptKeysWithinTimeFrame(
+    program,
+    stakePool,
+    startTime,
+    endTime
+  );
   const chunkedStakeReceipts = await Promise.all(
     chunkedKeys.map((keys) =>
       program.account.stakeDepositReceipt.fetchMultiple(keys)
