@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "0.1.3",
+  version: "0.1.4",
   name: "spl_token_staking",
   instructions: [
     {
@@ -370,6 +370,60 @@ export const _SplTokenStakingIDL = {
         },
       ],
       args: [],
+    },
+    {
+      name: "updateTokenMeta",
+      accounts: [
+        {
+          name: "authority",
+          isMut: false,
+          isSigner: true,
+        },
+        {
+          name: "metadataAccount",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "stakePool",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "stakeMint",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "metadataProgram",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "rent",
+          isMut: false,
+          isSigner: false,
+        },
+        {
+          name: "systemProgram",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: "name",
+          type: "string",
+        },
+        {
+          name: "symbol",
+          type: "string",
+        },
+        {
+          name: "uri",
+          type: "string",
+        },
+      ],
     },
   ],
   accounts: [
