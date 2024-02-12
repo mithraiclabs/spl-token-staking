@@ -8,7 +8,7 @@ use mpl_token_metadata::state::DataV2;
 
 #[derive(Accounts)]
 pub struct UpdateTokenMeta<'info> {
-    pub payer: Signer<'info>,
+    pub authority: Signer<'info>,
 
     /// CHECK: Handled by metadata program
     #[account(mut)]
@@ -17,7 +17,9 @@ pub struct UpdateTokenMeta<'info> {
     #[account(
       owner = ID,
       // Validates the StakePool's stake mint matches the mint to have updated metadata
-      has_one = stake_mint
+      has_one = stake_mint,
+      // Validate the stake pool authority is the signer
+      has_one = authority @ErrorCode::InvalidAuthority
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
 
@@ -41,11 +43,6 @@ pub fn handler(
 ) -> Result<()> {
     let stake_pool = ctx.accounts.stake_pool.load()?;
 
-    require!(
-        ctx.accounts.payer.key() == stake_pool.authority,
-        ErrorCode::InvalidAuthority
-    );
-
     let data = DataV2 {
         name,
         symbol,
@@ -61,7 +58,7 @@ pub fn handler(
             metadata: ctx.accounts.metadata_account.to_account_info(),
             mint: ctx.accounts.stake_mint.to_account_info(),
             mint_authority: ctx.accounts.stake_pool.to_account_info(),
-            payer: ctx.accounts.payer.to_account_info(),
+            payer: ctx.accounts.authority.to_account_info(),
             update_authority: ctx.accounts.stake_pool.to_account_info(),
             system_program: ctx.accounts.system_program.to_account_info(),
             rent: ctx.accounts.rent.to_account_info(),

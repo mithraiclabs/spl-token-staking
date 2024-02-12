@@ -375,7 +375,7 @@ export const _SplTokenStakingIDL = {
       name: "updateTokenMeta",
       accounts: [
         {
-          name: "payer",
+          name: "authority",
           isMut: false,
           isSigner: true,
         },

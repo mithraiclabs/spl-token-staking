@@ -80,7 +80,7 @@ describe("UpdateTokenMeta", () => {
       await program.methods
         .updateTokenMeta(name, symbol, "")
         .accounts({
-          payer: provider.publicKey,
+          authority: provider.publicKey,
           metadataAccount: metadataPda[0],
           stakePool: stakePoolKey,
           stakeMint: stakePool.stakeMint,
@@ -127,7 +127,7 @@ describe("UpdateTokenMeta", () => {
       await program.methods
         .updateTokenMeta(newName, newSymbol, "")
         .accounts({
-          payer: provider.publicKey,
+          authority: provider.publicKey,
           metadataAccount: metadataPda[0],
           stakePool: stakePoolKey,
           stakeMint: stakePool.stakeMint,
