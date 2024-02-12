@@ -17,7 +17,7 @@ import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
 import { assertBNEqual } from "./genericTests";
 
-describe.only("withdraw", () => {
+describe("withdraw", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgramInstance = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
@@ -372,12 +372,13 @@ describe.only("withdraw", () => {
         ],
         program.programId
       );
-      const [stakePoolBefore, stakeReceipt, depositerMintAccountBefore, sTokenAccountBefore] =
+      const [stakePoolBefore, stakeReceipt, depositerMintAccountBefore, sTokenAccountBefore, vaultBefore] =
         await Promise.all([
           program.account.stakePool.fetch(stakePoolKey),
           program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
           tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
           tokenProgramInstance.account.account.fetch(stakeMintAccountKey, 'processed'),
+          tokenProgramInstance.account.account.fetch(vaultKey),
         ]);
       assert.equal(sTokenAccountBefore.amount.toString(), "0");
 
@@ -438,7 +439,7 @@ describe.only("withdraw", () => {
       );
       // No change to the stake token because it's not burning
       assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount);
-      assertBNEqual(vaultAfter.amount, 0);
+      assertBNEqual(vaultAfter.amount, vaultBefore.amount.sub(stakeReceipt.depositAmount));
       assert.isNull(
         stakeDepositReceipt,
         "StakeDepositReceipt account not closed"
