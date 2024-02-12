@@ -77,6 +77,7 @@ describe("withdraw", () => {
 
   it("withdraw unlocked tokens", async () => {
     const receiptNonce = 0;
+    const depositAmount = new anchor.BN(1_000_000_000);
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor1.publicKey.toBuffer(),
@@ -100,7 +101,7 @@ describe("withdraw", () => {
       depositor1,
       mintToBeStakedAccountKey,
       stakeMintAccountKey,
-      new anchor.BN(1_000_000_000),
+      depositAmount,
       new anchor.BN(0),
       receiptNonce
     );
@@ -116,7 +117,6 @@ describe("withdraw", () => {
         },
         vault: vaultKey,
         stakeMint,
-        from: stakeMintAccountKey,
         destination: mintToBeStakedAccountKey,
       })
       .remainingAccounts([
@@ -139,14 +139,12 @@ describe("withdraw", () => {
       depositerMintAccount,
       sTokenAccountAfter,
       vaultAfter,
-      stakeMintAfter,
       stakeDepositReceipt,
     ] = await Promise.all([
       program.account.stakePool.fetch(stakePoolKey),
       tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
       tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
       tokenProgramInstance.account.account.fetch(vaultKey),
-      tokenProgramInstance.account.mint.fetch(stakeMint),
       program.provider.connection.getAccountInfo(stakeReceiptKey),
     ]);
     assertBNEqual(
@@ -157,9 +155,8 @@ describe("withdraw", () => {
       depositerMintAccount.amount,
       depositerMintAccountBefore.amount
     );
-    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount);
+    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount.add(depositAmount));
     assertBNEqual(vaultAfter.amount, 0);
-    assertBNEqual(stakeMintAfter.supply, 0);
     assert.isNull(
       stakeDepositReceipt,
       "StakeDepositReceipt account not closed"
@@ -168,6 +165,7 @@ describe("withdraw", () => {
 
   it("withdraw claims unclaimed rewards", async () => {
     const receiptNonce = 1;
+    const depositAmount = new anchor.BN(1_000_000_000);
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor1.publicKey.toBuffer(),
@@ -192,7 +190,7 @@ describe("withdraw", () => {
       depositor1,
       mintToBeStakedAccountKey,
       stakeMintAccountKey,
-      new anchor.BN(1_000_000_000),
+      depositAmount,
       new anchor.BN(0),
       receiptNonce,
       [rewardVaultKey]
@@ -230,7 +228,6 @@ describe("withdraw", () => {
         },
         vault: vaultKey,
         stakeMint,
-        from: stakeMintAccountKey,
         destination: mintToBeStakedAccountKey,
       })
       .remainingAccounts([
@@ -253,14 +250,12 @@ describe("withdraw", () => {
       depositerMintAccount,
       sTokenAccountAfter,
       vaultAfter,
-      stakeMintAfter,
       depositorReward1AccountAfter,
     ] = await Promise.all([
       program.account.stakePool.fetch(stakePoolKey),
       tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
       tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
       tokenProgramInstance.account.account.fetch(vaultKey),
-      tokenProgramInstance.account.mint.fetch(stakeMint),
       tokenProgramInstance.account.account.fetch(depositorReward1AccountKey),
     ]);
     assertBNEqual(
@@ -271,9 +266,8 @@ describe("withdraw", () => {
       depositerMintAccount.amount,
       depositerMintAccountBefore.amount
     );
-    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount);
+    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount.add(depositAmount));
     assertBNEqual(vaultAfter.amount, 0);
-    assertBNEqual(stakeMintAfter.supply, 0);
     assertBNEqual(depositorReward1AccountAfter.amount, totalReward1);
   });
 
@@ -314,7 +308,6 @@ describe("withdraw", () => {
           },
           vault: vaultKey,
           stakeMint,
-          from: stakeMintAccountKey,
           destination: mintToBeStakedAccountKey,
         })
         .remainingAccounts([
@@ -336,5 +329,121 @@ describe("withdraw", () => {
       return;
     }
     assert.isTrue(false, "TX should have failed");
+  });
+
+  describe("After burning stake_mint tokens", () => {
+    const receiptNonce = 3;
+    before(async () => {
+      // deposit 1 token
+      await deposit(
+        program,
+        stakePoolNonce,
+        mintToBeStaked,
+        depositor1,
+        mintToBeStakedAccountKey,
+        stakeMintAccountKey,
+        new anchor.BN(1_000_000_000),
+        new anchor.BN(0),
+        receiptNonce,
+        [rewardVaultKey]
+      );
+      const stakeMintTokenAccount =
+        await tokenProgramInstance.account.account.fetch(stakeMintAccountKey);
+
+      // Burn the staking tokens
+      await tokenProgramInstance.methods
+        .burn(stakeMintTokenAccount.amount)
+        .accounts({
+          account: stakeMintAccountKey,
+          mint: stakeMint,
+          authority: depositor1.publicKey,
+        })
+        .signers([depositor1])
+        .rpc();
+    });
+
+    it("should still withdraw", async () => {
+      const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          depositor1.publicKey.toBuffer(),
+          stakePoolKey.toBuffer(),
+          new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
+          Buffer.from("stakeDepositReceipt", "utf-8"),
+        ],
+        program.programId
+      );
+      const [stakePoolBefore, stakeReceipt, depositerMintAccountBefore, sTokenAccountBefore, vaultBefore] =
+        await Promise.all([
+          program.account.stakePool.fetch(stakePoolKey),
+          program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
+          tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
+          tokenProgramInstance.account.account.fetch(stakeMintAccountKey, 'processed'),
+          tokenProgramInstance.account.account.fetch(vaultKey),
+        ]);
+      assert.equal(sTokenAccountBefore.amount.toString(), "0");
+
+      // Withdraw
+      try {
+        await program.methods
+          .withdraw()
+          .accounts({
+            claimBase: {
+              owner: depositor1.publicKey,
+              stakePool: stakePoolKey,
+              stakeDepositReceipt: stakeReceiptKey,
+              tokenProgram: TOKEN_PROGRAM_ID,
+            },
+            vault: vaultKey,
+            stakeMint,
+            destination: mintToBeStakedAccountKey,
+          })
+          .remainingAccounts([
+            {
+              pubkey: rewardVaultKey,
+              isWritable: true,
+              isSigner: false,
+            },
+            {
+              pubkey: depositorReward1AccountKey,
+              isWritable: true,
+              isSigner: false,
+            },
+          ])
+          .signers([depositor1])
+          .rpc({ skipPreflight: true });
+      } catch (err) {
+        console.error(err);
+        assert.ok(false);
+      }
+
+      const [
+        stakePoolAfter,
+        depositerMintAccount,
+        sTokenAccountAfter,
+        vaultAfter,
+        stakeDepositReceipt,
+      ] = await Promise.all([
+        program.account.stakePool.fetch(stakePoolKey),
+        tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
+        tokenProgramInstance.account.account.fetch(stakeMintAccountKey, 'processed'),
+        tokenProgramInstance.account.account.fetch(vaultKey),
+        program.provider.connection.getAccountInfo(stakeReceiptKey),
+      ]);
+      assertBNEqual(
+        stakePoolBefore.totalWeightedStake.sub(stakeReceipt.effectiveStake),
+        stakePoolAfter.totalWeightedStake
+      );
+      assertBNEqual(
+        depositerMintAccount.amount,
+        depositerMintAccountBefore.amount.add(stakeReceipt.depositAmount)
+      );
+      // No change to the stake token because it's not burning
+      assertBNEqual(sTokenAccountAfter.amount, sTokenAccountBefore.amount);
+      assertBNEqual(vaultAfter.amount, vaultBefore.amount.sub(stakeReceipt.depositAmount));
+      assert.isNull(
+        stakeDepositReceipt,
+        "StakeDepositReceipt account not closed"
+      );
+    });
   });
 });
