@@ -6,6 +6,9 @@
     "dependencies": {
         "@coral-xyz/anchor": "^0.28.0",
         "@coral-xyz/spl-token": "^0.28.0",
+        "@metaplex-foundation/mpl-token-metadata": "^3.2.0",
+        "@metaplex-foundation/umi": "^0.9.1",
+        "@metaplex-foundation/umi-bundle-defaults": "^0.9.1",
         "@mithraic-labs/token-staking": "link:./packages/token-staking",
         "@solana/spl-token": "^0.3.8",
         "decimal.js": "^10.4.3"

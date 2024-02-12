@@ -11,6 +11,13 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]] # Metaplex Token Metadata program
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
+
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts -r tests/hooks.ts"
 # test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initialize-stake-pool.ts -r tests/hooks.ts"
