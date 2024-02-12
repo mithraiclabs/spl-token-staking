@@ -23,4 +23,4 @@ jet-proc-macros = { version = "1", package = "jet-proto-proc-macros" }
 static_assertions = "1.1.0"
 uint = "=0.9.1"
 
-mpl-token-metadata = { version = "=4.1.1" }
+mpl-token-metadata = { version = "=1.13.2" }

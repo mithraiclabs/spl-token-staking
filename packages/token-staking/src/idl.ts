@@ -372,7 +372,7 @@ export const _SplTokenStakingIDL = {
       args: [],
     },
     {
-      name: "updateTokenMetadata",
+      name: "updateTokenMeta",
       accounts: [
         {
           name: "payer",
@@ -382,16 +382,6 @@ export const _SplTokenStakingIDL = {
         {
           name: "metadataAccount",
           isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "tokenAMetadataAccount",
-          isMut: false,
-          isSigner: false,
-        },
-        {
-          name: "tokenBMetadataAccount",
-          isMut: false,
           isSigner: false,
         },
         {

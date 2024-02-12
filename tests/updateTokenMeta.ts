@@ -7,8 +7,8 @@ import {
   IdlAccounts,
 } from "@coral-xyz/anchor";
 import {
-  Metadata,
   fetchMetadata,
+  findMetadataPda,
   mplTokenMetadata,
 } from "@metaplex-foundation/mpl-token-metadata";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
@@ -16,29 +16,20 @@ import { assert } from "chai";
 import { SplTokenStaking } from "../target/types/spl_token_staking";
 import { SCALE_FACTOR_BASE, initStakePool } from "@mithraic-labs/token-staking";
 import { mintToBeStaked } from "./hooks";
+import { Pda, publicKey } from "@metaplex-foundation/umi";
 
 const METADATA_PROGRAM_KEY = new web3.PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
 
-const deriveMetadataKey = (mint: web3.PublicKey) =>
-  web3.PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("metadata", "utf-8"),
-      METADATA_PROGRAM_KEY.toBuffer(),
-      mint.toBuffer(),
-    ],
-    METADATA_PROGRAM_KEY
-  );
-
 describe("UpdateTokenMeta", () => {
   const stakePoolNonce = 22;
   const program = workspace.SplTokenStaking as Program<SplTokenStaking>;
   const provider = AnchorProvider.local();
-  const umi = createUmi(provider.connection.rpcEndpoint).use(
+  const umi = createUmi(provider.connection.rpcEndpoint, "processed").use(
     mplTokenMetadata()
   );
-  let metadataKey: web3.PublicKey;
+  let metadataPda: Pda;
   let stakePoolKey: web3.PublicKey;
   let stakePool: IdlAccounts<SplTokenStaking>["stakePool"];
 
@@ -68,38 +59,43 @@ describe("UpdateTokenMeta", () => {
     ]);
     stakePool = await program.account.stakePool.fetch(stakePoolKey);
     // Derive the Metadata account
-    [metadataKey] = deriveMetadataKey(stakePool.stakeMint);
+    metadataPda = findMetadataPda(umi, {
+      mint: publicKey(stakePool.stakeMint),
+    });
   });
 
-  it("should create the meta for the OptionMint", async () => {
-    const symbol = "sTEST";
+  it("should create the meta for the stake pool mint", async () => {
+    const symbol = "TEST";
     const name = "Staking Test Token";
     // Validate the metadata has not been set
     try {
-      // @ts-ignore: Stupid umi
-      await fetchMetadata(umi, metadataKey);
+      await fetchMetadata(umi, metadataPda);
       assert.ok(false);
     } catch {
       assert.ok(true);
     }
 
     // Actually call the update instruction
-    await program.methods
-      .updateTokenMeta(symbol, name, "")
-      .accounts({
-        payer: provider.publicKey,
-        metadataAccount: metadataKey,
-        stakePool: stakePoolKey,
-        stakeMint: stakePool.stakeMint,
-        metadataProgram: METADATA_PROGRAM_KEY,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .rpc();
+    try {
+      await program.methods
+        .updateTokenMeta(name, symbol, "")
+        .accounts({
+          payer: provider.publicKey,
+          metadataAccount: metadataPda[0],
+          stakePool: stakePoolKey,
+          stakeMint: stakePool.stakeMint,
+          metadataProgram: METADATA_PROGRAM_KEY,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          systemProgram: web3.SystemProgram.programId,
+        })
+        .rpc();
+    } catch (err) {
+      console.error(err);
+      assert.ok(false);
+    }
 
     // Validate the instruction meta is correct
-    // @ts-ignore: Stupid umi
-    const metadataAfter = await fetchMetadata(umi, metadataKey);
+    const metadataAfter = await fetchMetadata(umi, metadataPda);
     assert.equal(
       String(
         metadataAfter.symbol.replace(
@@ -121,8 +117,7 @@ describe("UpdateTokenMeta", () => {
       const newName = "updated name";
       // Validate the metadata has not been set
       try {
-        // @ts-ignore: Stupid umi
-        await fetchMetadata(umi, metadataKey);
+        await fetchMetadata(umi, metadataPda);
         assert.ok(true);
       } catch {
         assert.ok(false);
@@ -130,10 +125,10 @@ describe("UpdateTokenMeta", () => {
 
       // Actually call the update instruction
       await program.methods
-        .updateTokenMeta(newSymbol, newName, "")
+        .updateTokenMeta(newName, newSymbol, "")
         .accounts({
           payer: provider.publicKey,
-          metadataAccount: metadataKey,
+          metadataAccount: metadataPda[0],
           stakePool: stakePoolKey,
           stakeMint: stakePool.stakeMint,
           metadataProgram: METADATA_PROGRAM_KEY,
@@ -143,8 +138,7 @@ describe("UpdateTokenMeta", () => {
         .rpc();
 
       // Validate the instruction meta is correct
-      // @ts-ignore: Stupid umi
-      const metadataAfter = await fetchMetadata(umi, metadataKey);
+      const metadataAfter = await fetchMetadata(umi, metadataPda);
       assert.equal(
         String(
           metadataAfter.symbol.replace(
