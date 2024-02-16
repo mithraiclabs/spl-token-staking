@@ -137,3 +137,15 @@ claimed_amounts: Vec<u128>
 - Set max number of RewardPools when setting up StakePool. An optimization for organizations that know they will only ever want to distribute a single SPL Token as rewards to stakers.
 - Allow for locking rewards based on duration. This is another incentive mechanism for getting wallets to stake for longer durations.
 - Early withdraw penalties. Some % of locked tokens get sent to DAO for withdrawing.
+
+## Development
+
+### Release
+
+```
+export GIT_SHA=$(git rev-parse HEAD)
+export GIT_REF_NAM=$(git describe --tags)
+anchor build -p spl_token_staking -e GIT_SHA=$(git rev-parse HEAD) -e GIT_REF_NAM=$(git describe --tags) --verifiable
+```
+
+
