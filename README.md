@@ -143,8 +143,6 @@ claimed_amounts: Vec<u128>
 ### Release
 
 ```
-export GIT_SHA=$(git rev-parse HEAD)
-export GIT_REF_NAM=$(git describe --tags)
 anchor build -p spl_token_staking -e GIT_SHA=$(git rev-parse HEAD) -e GIT_REF_NAM=$(git describe --tags) --verifiable
 ```
 
