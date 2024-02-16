@@ -10,6 +10,7 @@ import {
 } from "./constants";
 import { SplTokenStaking } from "./idl";
 import { StakeDepositReceiptData, StakePool } from "./types";
+import { SplTokenStakingV0 } from "./idl_v0";
 
 /**
  * Calculate the digit precision loss based on the given maximum weight.
@@ -47,7 +48,7 @@ export const getDigitShift = (maxWeight: bigint, maxShift: number = 999) => {
  * @returns
  */
 export const batchRequestStakeReceipts = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking|SplTokenStakingV0>,
   owner: anchor.web3.PublicKey,
   stakePoolKey: anchor.web3.PublicKey
 ) => {
@@ -216,7 +217,7 @@ export const calculateStakeWeight = (
 };
 
 export const fetchChunkedListOfStakeReceiptKeysWithinTimeFrame = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking|SplTokenStakingV0>,
   stakePool: anchor.Address,
   startTime: number | string = 0,
   endTime: number | string = Number.MAX_SAFE_INTEGER,
@@ -268,7 +269,7 @@ export const fetchChunkedListOfStakeReceiptKeysWithinTimeFrame = async (
  * @returns
  */
 export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
-  program: anchor.Program<SplTokenStaking>,
+  program: anchor.Program<SplTokenStaking|SplTokenStakingV0>,
   stakePool: anchor.Address,
   startTime: number | string = 0,
   endTime: number | string = Number.MAX_SAFE_INTEGER
