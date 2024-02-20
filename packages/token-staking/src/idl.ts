@@ -355,6 +355,14 @@ export const _SplTokenStakingIDL = {
           docs: ["stake_mint of StakePool that will be burned"],
         },
         {
+          name: "from",
+          isMut: true,
+          isSigner: false,
+          docs: [
+            "Token Account holding weighted stake representation token to burn",
+          ],
+        },
+        {
           name: "destination",
           isMut: true,
           isSigner: false,
