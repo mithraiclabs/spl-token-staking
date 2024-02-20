@@ -18,10 +18,6 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub stake_mint: Account<'info, Mint>,
 
-    /// [dead] left in for backwards compatibility.
-    /// CHECK: unused account, no check needed
-    pub from: UncheckedAccount<'info>,
-
     /// Token account to transfer the previously staked token to
     #[account(mut)]
     pub destination: Account<'info, TokenAccount>,

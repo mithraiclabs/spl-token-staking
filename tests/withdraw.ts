@@ -117,7 +117,6 @@ describe("withdraw", () => {
         },
         vault: vaultKey,
         stakeMint,
-        from: anchor.web3.PublicKey.default,
         destination: mintToBeStakedAccountKey,
       })
       .remainingAccounts([
@@ -229,7 +228,6 @@ describe("withdraw", () => {
         },
         vault: vaultKey,
         stakeMint,
-        from: anchor.web3.PublicKey.default,
         destination: mintToBeStakedAccountKey,
       })
       .remainingAccounts([
@@ -310,7 +308,6 @@ describe("withdraw", () => {
           },
           vault: vaultKey,
           stakeMint,
-          from: anchor.web3.PublicKey.default,
           destination: mintToBeStakedAccountKey,
         })
         .remainingAccounts([
@@ -398,7 +395,6 @@ describe("withdraw", () => {
             },
             vault: vaultKey,
             stakeMint,
-            from: anchor.web3.PublicKey.default,
             destination: mintToBeStakedAccountKey,
           })
           .remainingAccounts([
