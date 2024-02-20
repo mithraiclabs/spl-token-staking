@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
+use anchor_spl::token::{self, Burn, Mint, TokenAccount, Transfer};
 
-use crate::{errors::ErrorCode, stake_pool_signer_seeds};
+use crate::{errors::ErrorCode, stake_pool_signer_seeds, state::StakeDepositReceipt};
 
 use super::claim_base::*;
 use crate::state::u128;
@@ -18,9 +18,9 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub stake_mint: Account<'info, Mint>,
 
-    /// [dead] left in for backwards compatibility.
-    /// CHECK: unused account, no check needed
-    pub from: UncheckedAccount<'info>,
+    /// Token Account holding weighted stake representation token to burn
+    #[account(mut)]
+    pub from: Account<'info, TokenAccount>,
 
     /// Token account to transfer the previously staked token to
     #[account(mut)]
@@ -38,6 +38,10 @@ impl<'info> Withdraw<'info> {
         require!(
             stake_pool.stake_mint.key() == self.stake_mint.key(),
             ErrorCode::InvalidStakeMint
+        );
+        require!(
+            self.from.owner.key() == self.claim_base.owner.key(),
+            ErrorCode::InvalidAuthority
         );
         Ok(())
     }
@@ -58,6 +62,23 @@ impl<'info> Withdraw<'info> {
             cpi_ctx,
             self.claim_base.stake_deposit_receipt.deposit_amount,
         )
+    }
+
+    pub fn burn_stake_weight_tokens_from_owner(&self) -> Result<()> {
+        let stake_pool = self.claim_base.stake_pool.load()?;
+        let cpi_ctx = CpiContext::new(
+            self.claim_base.token_program.to_account_info(),
+            Burn {
+                mint: self.stake_mint.to_account_info(),
+                from: self.from.to_account_info(),
+                authority: self.claim_base.owner.to_account_info(),
+            },
+        );
+        let effective_stake_token_amount = StakeDepositReceipt::get_token_amount_from_stake(
+            self.claim_base.stake_deposit_receipt.effective_stake_u128(),
+            stake_pool.max_weight,
+        );
+        token::burn(cpi_ctx, effective_stake_token_amount)
     }
 
     pub fn close_stake_deposit_receipt(&self) -> Result<()> {
@@ -90,6 +111,7 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
         stake_pool.total_weighted_stake = u128(total_staked.to_le_bytes());
     }
     ctx.accounts.transfer_staked_tokens_to_owner()?;
+    ctx.accounts.burn_stake_weight_tokens_from_owner()?;
     // claim all unclaimed rewards
     let claimed_amounts = ctx
         .accounts
