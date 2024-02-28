@@ -24,3 +24,6 @@ static_assertions = "1.1.0"
 uint = "=0.9.1"
 
 mpl-token-metadata = { version = "=1.13.2" }
+
+solana-security-txt = "1.1.1"
+default-env = "0.1.1"
