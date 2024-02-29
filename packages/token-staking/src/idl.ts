@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "1.1.1",
+  version: "1.1.2",
   name: "spl_token_staking",
   instructions: [
     {

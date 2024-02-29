@@ -4,6 +4,7 @@ pub mod errors;
 pub mod instructions;
 pub mod macros;
 pub mod math;
+pub mod security;
 pub mod state;
 
 use crate::instructions::*;
