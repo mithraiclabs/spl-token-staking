@@ -35,7 +35,7 @@ pub struct Withdraw<'info> {
 
 impl<'info> Withdraw<'info> {
     pub fn is_bonk_v0_pool(&self) -> bool {
-        self.claim_base.stake_pool.key() != bonk_pool::ID
+        self.claim_base.stake_pool.key() == bonk_pool::ID
     }
     /// Addiditional validations that rely on the accounts within `claim_base`.
     pub fn validate_stake_pool_and_owner(&self) -> Result<()> {
@@ -48,7 +48,7 @@ impl<'info> Withdraw<'info> {
             stake_pool.stake_mint.key() == self.stake_mint.key(),
             ErrorCode::InvalidStakeMint
         );
-        if self.from.is_some() || self.is_bonk_v0_pool() {
+        if self.from.is_some() || !self.is_bonk_v0_pool() {
             let from = self.from.clone().unwrap();
             require!(
                 from.owner.key() == self.claim_base.owner.key(),
