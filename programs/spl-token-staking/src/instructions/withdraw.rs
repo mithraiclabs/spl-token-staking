@@ -48,13 +48,15 @@ impl<'info> Withdraw<'info> {
             stake_pool.stake_mint.key() == self.stake_mint.key(),
             ErrorCode::InvalidStakeMint
         );
-        if self.from.is_some() || !self.is_bonk_v0_pool() {
-            let from = self.from.clone().unwrap();
-            require!(
-                from.owner.key() == self.claim_base.owner.key(),
-                ErrorCode::InvalidAuthority
-            );
+        // Short circuit if it's the bonk pool and from is not set
+        if self.is_bonk_v0_pool() && self.from.is_none() {
+            return Ok(());
         }
+        let from = self.from.clone().unwrap();
+        require!(
+            from.owner.key() == self.claim_base.owner.key(),
+            ErrorCode::InvalidAuthority
+        );
         Ok(())
     }
     /// Transfer the owner's previously staked tokens back.
@@ -77,11 +79,9 @@ impl<'info> Withdraw<'info> {
     }
 
     pub fn burn_stake_weight_tokens_from_owner(&self) -> Result<()> {
-        {
-            // Short circuit if it's the bonk pool and from is not set
-            if self.is_bonk_v0_pool() && self.from.is_none() {
-                return Ok(());
-            }
+        // Short circuit if it's the bonk pool and from is not set
+        if self.is_bonk_v0_pool() && self.from.is_none() {
+            return Ok(());
         }
         let stake_pool = self.claim_base.stake_pool.load()?;
         let from = self.from.clone().unwrap();
