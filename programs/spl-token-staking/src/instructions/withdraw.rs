@@ -6,6 +6,12 @@ use crate::{errors::ErrorCode, stake_pool_signer_seeds, state::StakeDepositRecei
 use super::claim_base::*;
 use crate::state::u128;
 
+mod bonk_pool {
+    use anchor_lang::declare_id;
+
+    declare_id!("9AdEE8AAm1XgJrPEs4zkTPozr3o4U5iGbgvPwkNdLDJ3");
+}
+
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     pub claim_base: ClaimBase<'info>,
@@ -20,7 +26,7 @@ pub struct Withdraw<'info> {
 
     /// Token Account holding weighted stake representation token to burn
     #[account(mut)]
-    pub from: Account<'info, TokenAccount>,
+    pub from: Option<Account<'info, TokenAccount>>,
 
     /// Token account to transfer the previously staked token to
     #[account(mut)]
@@ -28,6 +34,9 @@ pub struct Withdraw<'info> {
 }
 
 impl<'info> Withdraw<'info> {
+    pub fn is_bonk_v0_pool(&self) -> bool {
+        self.claim_base.stake_pool.key() == bonk_pool::ID
+    }
     /// Addiditional validations that rely on the accounts within `claim_base`.
     pub fn validate_stake_pool_and_owner(&self) -> Result<()> {
         let stake_pool = self.claim_base.stake_pool.load()?;
@@ -39,8 +48,13 @@ impl<'info> Withdraw<'info> {
             stake_pool.stake_mint.key() == self.stake_mint.key(),
             ErrorCode::InvalidStakeMint
         );
+        // Short circuit if it's the bonk pool and from is not set
+        if self.is_bonk_v0_pool() && self.from.is_none() {
+            return Ok(());
+        }
+        let from = self.from.clone().unwrap();
         require!(
-            self.from.owner.key() == self.claim_base.owner.key(),
+            from.owner.key() == self.claim_base.owner.key(),
             ErrorCode::InvalidAuthority
         );
         Ok(())
@@ -65,12 +79,17 @@ impl<'info> Withdraw<'info> {
     }
 
     pub fn burn_stake_weight_tokens_from_owner(&self) -> Result<()> {
+        // Short circuit if it's the bonk pool and from is not set
+        if self.is_bonk_v0_pool() && self.from.is_none() {
+            return Ok(());
+        }
         let stake_pool = self.claim_base.stake_pool.load()?;
+        let from = self.from.clone().unwrap();
         let cpi_ctx = CpiContext::new(
             self.claim_base.token_program.to_account_info(),
             Burn {
                 mint: self.stake_mint.to_account_info(),
-                from: self.from.to_account_info(),
+                from: from.to_account_info(),
                 authority: self.claim_base.owner.to_account_info(),
             },
         );
