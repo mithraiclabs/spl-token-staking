@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDLV0 = {
-  version: "0.1.4",
+  version: "0.1.5",
   name: "spl_token_staking",
   instructions: [
     {
@@ -358,6 +358,7 @@ export const _SplTokenStakingIDLV0 = {
           name: "from",
           isMut: true,
           isSigner: false,
+          isOptional: true,
           docs: [
             "Token Account holding weighted stake representation token to burn",
           ],
