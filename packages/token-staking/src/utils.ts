@@ -48,11 +48,11 @@ export const getDigitShift = (maxWeight: bigint, maxShift: number = 999) => {
  * @returns
  */
 export const batchRequestStakeReceipts = async (
-  program: anchor.Program<SplTokenStaking|SplTokenStakingV0>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   owner: anchor.web3.PublicKey,
-  stakePoolKey: anchor.web3.PublicKey
+  stakePoolKey: anchor.web3.PublicKey,
+  pageSize = 50
 ) => {
-  const pageSize = 10;
   const maxIndex = 4_294_967_295; // U32 MAX
   const maxPage = Math.ceil(maxIndex / pageSize);
   let decodedAccountBuffer: StakeDepositReceiptData[] = [];
@@ -94,8 +94,8 @@ export const batchRequestStakeReceipts = async (
       ...program.coder.accounts.decode("stakeDepositReceipt", a.data),
     }));
     decodedAccountBuffer = [...decodedAccountBuffer, ...decodedAccounts];
-    if (pageSize - validAccounts.length > 2) {
-      // if there are more than 2 null accounts, we can assume we've reached the last page of StakeDepositReceipts.
+    if (validAccounts.length === 0) {
+      // if there is a full page of empty accounts, we can assume we've reached the last page of StakeDepositReceipts.
       return decodedAccountBuffer;
     }
   }
@@ -217,7 +217,7 @@ export const calculateStakeWeight = (
 };
 
 export const fetchChunkedListOfStakeReceiptKeysWithinTimeFrame = async (
-  program: anchor.Program<SplTokenStaking|SplTokenStakingV0>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   stakePool: anchor.Address,
   startTime: number | string = 0,
   endTime: number | string = Number.MAX_SAFE_INTEGER,
@@ -269,7 +269,7 @@ export const fetchChunkedListOfStakeReceiptKeysWithinTimeFrame = async (
  * @returns
  */
 export const fetchStakeReceiptsOfStakersWithinTimeFrame = async (
-  program: anchor.Program<SplTokenStaking|SplTokenStakingV0>,
+  program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   stakePool: anchor.Address,
   startTime: number | string = 0,
   endTime: number | string = Number.MAX_SAFE_INTEGER
