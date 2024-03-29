@@ -1,17 +1,14 @@
 import * as anchor from "@coral-xyz/anchor";
 import { SplTokenStaking } from "../target/types/spl_token_staking";
 import {
-  ExtensionType,
   MintLayout,
-  TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
   createInitializeMintInstruction,
-  createMintToCheckedInstruction,
   createMintToInstruction,
   getAssociatedTokenAddressSync,
-  getMintLen,
 } from "@solana/spl-token";
+import { SPL_TOKEN_PROGRAM_ID } from "@coral-xyz/spl-token";
 
 const mintToBeStakedKeypair = anchor.web3.Keypair.generate();
 const rewardMint1Keypair = anchor.web3.Keypair.generate();
@@ -20,8 +17,6 @@ export const mintToBeStaked = mintToBeStakedKeypair.publicKey;
 export const rewardMint1 = rewardMint1Keypair.publicKey;
 export const rewardMint2 = rewardMint2Keypair.publicKey;
 export const TEST_MINT_DECIMALS = 9;
-
-const tokenProgram = TOKEN_PROGRAM_ID;
 
 export const mochaHooks = {
   /* Before hook to run before all tests */
@@ -32,18 +27,11 @@ export const mochaHooks = {
 
       const program = anchor.workspace
         .SplTokenStaking as anchor.Program<SplTokenStaking>;
-
-      let mintLength =
-        tokenProgram == TOKEN_2022_PROGRAM_ID
-          ? getMintLen([]) // ExtensionType[] = [];
-          : MintLayout.span;
-
       const mintRentExemptBalance =
         await program.provider.connection.getMinimumBalanceForRentExemption(
-          mintLength
+          MintLayout.span
         );
-
-      let tx = new anchor.web3.Transaction();
+      const tx = new anchor.web3.Transaction();
       // stake mint IXs
       tx.add(
         anchor.web3.SystemProgram.createAccount({
@@ -51,7 +39,7 @@ export const mochaHooks = {
           newAccountPubkey: mintToBeStaked,
           space: MintLayout.span,
           lamports: mintRentExemptBalance,
-          programId: tokenProgram,
+          programId: SPL_TOKEN_PROGRAM_ID,
         })
       );
       tx.add(
@@ -59,11 +47,9 @@ export const mochaHooks = {
           mintToBeStaked,
           TEST_MINT_DECIMALS,
           program.provider.publicKey,
-          undefined,
-          tokenProgram
+          undefined
         )
       );
-
       // reward mint IXs
       tx.add(
         anchor.web3.SystemProgram.createAccount({
@@ -71,7 +57,7 @@ export const mochaHooks = {
           newAccountPubkey: rewardMint1,
           space: MintLayout.span,
           lamports: mintRentExemptBalance,
-          programId: tokenProgram,
+          programId: SPL_TOKEN_PROGRAM_ID,
         })
       );
       tx.add(
@@ -79,8 +65,7 @@ export const mochaHooks = {
           rewardMint1,
           TEST_MINT_DECIMALS,
           program.provider.publicKey,
-          undefined,
-          tokenProgram
+          undefined
         )
       );
       tx.add(
@@ -89,7 +74,7 @@ export const mochaHooks = {
           newAccountPubkey: rewardMint2,
           space: MintLayout.span,
           lamports: mintRentExemptBalance,
-          programId: tokenProgram,
+          programId: SPL_TOKEN_PROGRAM_ID,
         })
       );
       tx.add(
@@ -97,94 +82,53 @@ export const mochaHooks = {
           rewardMint2,
           TEST_MINT_DECIMALS,
           program.provider.publicKey,
-          undefined,
-          tokenProgram
+          undefined
         )
       );
 
       // Create associated token account for rewards
       const reward1TokenAccount = getAssociatedTokenAddressSync(
         rewardMint1,
-        program.provider.publicKey,
-        undefined,
-        tokenProgram
+        program.provider.publicKey
       );
       tx.add(
         createAssociatedTokenAccountInstruction(
           program.provider.publicKey,
           reward1TokenAccount,
           program.provider.publicKey,
-          rewardMint1,
-          tokenProgram
+          rewardMint1
         )
       );
       // Mint some tokens for rewards to provider
-      if (tokenProgram == TOKEN_2022_PROGRAM_ID) {
-        tx.add(
-          createMintToCheckedInstruction(
-            rewardMint1,
-            reward1TokenAccount,
-            program.provider.publicKey,
-            9_000_000_000_000_000,
-            TEST_MINT_DECIMALS,
-            [],
-            tokenProgram
-          )
-        );
-      } else {
-        tx.add(
-          createMintToInstruction(
-            rewardMint1,
-            reward1TokenAccount,
-            program.provider.publicKey,
-            9_000_000_000_000_000,
-            [],
-            tokenProgram
-          )
-        );
-      }
-
+      tx.add(
+        createMintToInstruction(
+          rewardMint1,
+          reward1TokenAccount,
+          program.provider.publicKey,
+          9_000_000_000_000_000
+        )
+      );
       const reward2TokenAccount = getAssociatedTokenAddressSync(
         rewardMint2,
-        program.provider.publicKey,
-        undefined,
-        tokenProgram
+        program.provider.publicKey
       );
       tx.add(
         createAssociatedTokenAccountInstruction(
           program.provider.publicKey,
           reward2TokenAccount,
           program.provider.publicKey,
-          rewardMint2,
-          tokenProgram
+          rewardMint2
         )
       );
       // Mint some tokens for rewards to provider
-      if (tokenProgram == TOKEN_2022_PROGRAM_ID) {
-        tx.add(
-          createMintToCheckedInstruction(
-            rewardMint2,
-            reward2TokenAccount,
-            program.provider.publicKey,
-            9_000_000_000_000_000,
-            TEST_MINT_DECIMALS,
-            [],
-            tokenProgram
-          )
-        );
-      } else {
-        tx.add(
-          createMintToInstruction(
-            rewardMint2,
-            reward2TokenAccount,
-            program.provider.publicKey,
-            9_000_000_000_000_000,
-            [],
-            tokenProgram
-          )
-        );
-      }
-
+      tx.add(
+        createMintToInstruction(
+          rewardMint2,
+          reward2TokenAccount,
+          program.provider.publicKey,
+          9_000_000_000_000_000
+        )
+      );
       await program.provider.sendAndConfirm(tx, [
         mintToBeStakedKeypair,
         rewardMint1Keypair,
@@ -234,14 +178,14 @@ export const createDepositorSplAccounts = async (
     mintStake,
     depositor.publicKey,
     false,
-    tokenProgram
+    TOKEN_PROGRAM_ID
   );
   const createMintToBeStakedAccountIx = createAssociatedTokenAccountInstruction(
     program.provider.publicKey,
     mintToBeStakedAccount,
     depositor.publicKey,
     mintStake,
-    tokenProgram
+    TOKEN_PROGRAM_ID
   );
   // mint 10 of StakePool's mint to provider wallet
   const mintIx = createMintToInstruction(
@@ -250,7 +194,7 @@ export const createDepositorSplAccounts = async (
     program.provider.publicKey,
     mintToBeStakedAmount,
     undefined,
-    tokenProgram
+    TOKEN_PROGRAM_ID
   );
   const mintTx = new anchor.web3.Transaction()
     .add(createMintToBeStakedAccountIx)

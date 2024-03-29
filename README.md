@@ -154,6 +154,3 @@ bump: u8,
 - Set max number of RewardPools when setting up StakePool. An optimization for organizations that know they will only ever want to distribute a single SPL Token as rewards to stakers.
 - Allow for locking rewards based on duration. This is another incentive mechanism for getting wallets to stake for longer durations.
 - Early withdraw penalties. Some % of locked tokens get sent to DAO for withdrawing.
-
-### Known Issues
-When attempting to run tests (`anchor test`), if you are facing a `ERROR: TypeError: fields must be array of Layout instances` related to buffer-layout, find the node_modules folder in both the top-level workspace AND the package, find @native-to-anchor/buffer-layout, and delete the node_modules directories if they exist.

@@ -5,7 +5,7 @@ import {
   GOVERNANCE_PROGRAM_SEED,
   SPL_GOVERNANCE_IDL,
 } from "@mithraic-labs/spl-governance";
-import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 /**
  * Stake with an existing StakePool.
@@ -108,7 +108,6 @@ export const createRealm = (
     [Buffer.from("realm-config", "utf-8"), realmAddress.toBuffer()],
     program.programId
   );
-
   return program.methods
     .createRealm(realmName, {
       communityTokenConfigArgs: {
