@@ -1,10 +1,17 @@
+use std::str::FromStr;
+
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{Mint, Token};
+use anchor_spl::token_2022::Token2022;
+use anchor_spl::token_interface::{TokenAccount as TokenAccountInterface, Mint as MintInterface};
 
 use crate::{
     errors::ErrorCode,
     state::{StakePool, SCALE_FACTOR_BASE},
 };
+
+const TOKEN: Pubkey = anchor_spl::token::spl_token::ID;
+const TOKEN_2022: Pubkey = anchor_spl::token_2022::spl_token_2022::ID;
 
 #[derive(Accounts)]
 #[instruction(
@@ -23,7 +30,10 @@ pub struct InitializeStakePool<'info> {
     pub authority: UncheckedAccount<'info>,
 
     /// SPL Token Mint of the underlying token to be deposited for staking
-    pub mint: Account<'info, Mint>,
+    #[account(
+      owner = TOKEN_2022
+    )]
+    pub mint: InterfaceAccount<'info, MintInterface>,
 
     #[account(
       init,
@@ -47,10 +57,11 @@ pub struct InitializeStakePool<'info> {
       payer = payer,
       token::mint = mint,
       token::authority = stake_pool,
+      owner = TOKEN_2022
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccountInterface>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
 }

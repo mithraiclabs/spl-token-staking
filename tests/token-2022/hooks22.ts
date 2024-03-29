@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { SplTokenStaking } from "../target/types/spl_token_staking";
+import { SplTokenStaking } from "../../target/types/spl_token_staking";
 import {
   ExtensionType,
   MintLayout,
@@ -21,7 +21,7 @@ export const rewardMint1 = rewardMint1Keypair.publicKey;
 export const rewardMint2 = rewardMint2Keypair.publicKey;
 export const TEST_MINT_DECIMALS = 9;
 
-const tokenProgram = TOKEN_PROGRAM_ID;
+const tokenProgram = TOKEN_2022_PROGRAM_ID;
 
 export const mochaHooks = {
   /* Before hook to run before all tests */

@@ -7,7 +7,7 @@ import {
   SCALE_FACTOR_BASE,
   createRegistrar,
 } from "@mithraic-labs/token-staking";
-import { TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
 import {
   assertBNEqual,
   assertKeyDefault,
@@ -102,7 +102,8 @@ describe("initialize-stake-pool", () => {
         stakePool: stakePoolKey,
         mint: mintToBeStaked,
         vault: vaultKey,
-        tokenProgram: SPL_TOKEN_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        token2022Program: TOKEN_2022_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
