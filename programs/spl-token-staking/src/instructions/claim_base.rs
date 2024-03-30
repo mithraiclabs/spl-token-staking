@@ -88,6 +88,7 @@ impl<'info> ClaimBase<'info> {
                 .unwrap()
                 .as_u64();
             if total_claimable == 0 {
+                remaining_accounts_index += 1;
                 continue;
             }
 
