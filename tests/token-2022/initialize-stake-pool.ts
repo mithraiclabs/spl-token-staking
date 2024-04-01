@@ -8,8 +8,13 @@ import {
   createRegistrar,
 } from "@mithraic-labs/token-staking";
 import {
+  AccountLayout,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccount,
+  createAssociatedTokenAccountInstruction,
+  createInitializeAccountInstruction,
+  getAssociatedTokenAddressSync,
   getMint,
 } from "@solana/spl-token";
 import {
@@ -28,8 +33,6 @@ describe("initialize-stake-pool", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgram = TOKEN_2022_PROGRAM_ID;
-  console.log("2022: " + tokenProgram);
-  console.log("regular: " + TOKEN_PROGRAM_ID);
   const tokenProgramInstance = splTokenProgram({ programId: tokenProgram });
   const splGovernance = createSplGovernanceProgram(
     // @ts-ignore
@@ -90,18 +93,43 @@ describe("initialize-stake-pool", () => {
       ],
       program.programId
     );
-    const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-      program.programId
-    );
+    // const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    //   [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
+    //   program.programId
+    // );
 
     const minDuration = new anchor.BN(0);
     const maxDuration = new anchor.BN(31536000); // 1 year in seconds
     const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
     const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
-    console.log("a");
-    console.log("program " + program.programId);
-    await program.methods
+
+    let vaultAta = getAssociatedTokenAddressSync(
+      mintToBeStaked,
+      stakePoolKey,
+      true,
+      tokenProgram
+    );
+    console.log("vault ata: " + vaultAta);
+    let initTokenAccIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      vaultAta,
+      stakePoolKey,
+      mintToBeStaked,
+      tokenProgram
+    );
+
+    /* Alternative... */
+    // const initVaultAccountIx = await tokenProgramInstance.methods
+    //   .initializeAccount()
+    //   .accounts({
+    //     account: vaultAta,
+    //     mint: mintToBeStaked,
+    //     owner: stakePoolKey,
+    //     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    //   })
+    //   .instruction();
+
+    let initIx = await program.methods
       .initializeStakePool(
         nonce,
         maxWeight,
@@ -113,15 +141,24 @@ describe("initialize-stake-pool", () => {
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,
         mint: mintToBeStaked,
-        vault: vaultKey,
-        tokenProgram: TOKEN_2022_PROGRAM_ID,
+        vault: vaultAta,
+        tokenProgram: tokenProgram,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .rpc();
-      console.log("b");
+      .instruction();
+    try {
+      await program.provider.sendAndConfirm(
+        new anchor.web3.Transaction().add(
+          initTokenAccIx,
+          initIx
+        )
+      );
+    } catch (err) {
+      console.log(err);
+    }
     const [vault, stakePool] = await Promise.all([
-      tokenProgramInstance.account.account.fetch(vaultKey),
+      tokenProgramInstance.account.account.fetch(vaultAta),
       program.account.stakePool.fetch(stakePoolKey),
     ]);
 
@@ -135,7 +172,7 @@ describe("initialize-stake-pool", () => {
     assert.isNotNull(vault);
     assertKeysEqual(stakePool.authority, program.provider.publicKey);
     assertKeysEqual(stakePool.mint, mintToBeStaked);
-    assertKeysEqual(stakePool.vault, vaultKey);
+    assertKeysEqual(stakePool.vault, vaultAta);
     assertKeysEqual(stakePool.registrar, registrarKey);
     assertKeysEqual(stakePool.creator, program.provider.publicKey);
     // Nothing staked yet
@@ -151,5 +188,4 @@ describe("initialize-stake-pool", () => {
       assertBNEqual(rewardPool.lastAmount, 0);
     });
   });
-
 });

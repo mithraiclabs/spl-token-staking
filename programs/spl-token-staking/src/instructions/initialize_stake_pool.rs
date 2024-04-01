@@ -31,7 +31,7 @@ pub struct InitializeStakePool<'info> {
 
     /// SPL Token Mint of the underlying token to be deposited for staking
     #[account(
-      owner = TOKEN_2022
+      // TODO validate token or 2022
     )]
     pub mint: InterfaceAccount<'info, MintInterface>,
 
@@ -51,13 +51,7 @@ pub struct InitializeStakePool<'info> {
 
     /// An SPL token Account for staging A tokens
     #[account(
-      init,
-      seeds = [&stake_pool.key().to_bytes()[..], b"vault"],
-      bump,
-      payer = payer,
-      token::mint = mint,
-      token::authority = stake_pool,
-      owner = TOKEN_2022
+      // TODO validate token or 2022
     )]
     pub vault: InterfaceAccount<'info, TokenAccountInterface>,
 

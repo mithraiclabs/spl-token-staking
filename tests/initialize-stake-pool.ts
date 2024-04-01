@@ -103,7 +103,6 @@ describe("initialize-stake-pool", () => {
         mint: mintToBeStaked,
         vault: vaultKey,
         tokenProgram: TOKEN_PROGRAM_ID,
-        token2022Program: TOKEN_2022_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
