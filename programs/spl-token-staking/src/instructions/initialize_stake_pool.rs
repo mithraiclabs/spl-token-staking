@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token};
 use anchor_spl::token_2022::Token2022;
-use anchor_spl::token_interface::{TokenAccount as TokenAccountInterface, Mint as MintInterface};
+use anchor_spl::token_interface::{Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface};
 
 use crate::{
     errors::ErrorCode,
@@ -31,7 +31,7 @@ pub struct InitializeStakePool<'info> {
 
     /// SPL Token Mint of the underlying token to be deposited for staking
     #[account(
-      // TODO validate token or 2022
+      // TODO validate token or token2022
     )]
     pub mint: InterfaceAccount<'info, MintInterface>,
 
@@ -51,11 +51,16 @@ pub struct InitializeStakePool<'info> {
 
     /// An SPL token Account for staging A tokens
     #[account(
-      // TODO validate token or 2022
+      init,
+      seeds = [&stake_pool.key().to_bytes()[..], b"vault"],
+      bump,
+      payer = payer,
+      token::mint = mint,
+      token::authority = stake_pool
     )]
     pub vault: InterfaceAccount<'info, TokenAccountInterface>,
 
-    pub token_program: Program<'info, Token2022>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
 }

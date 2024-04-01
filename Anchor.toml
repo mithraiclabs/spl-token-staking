@@ -13,8 +13,8 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 # test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts -r tests/hooks.ts"
-#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/initialize-stake-pool.ts -r tests/hooks.ts"
- test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/token-2022/*.ts -r tests/token-2022/hooks22.ts"
+#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initialize-stake-pool.ts -r tests/hooks.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/token-2022/*.ts -r tests/token-2022/hooks22.ts"
 
 [test.validator]
 [[test.genesis]]

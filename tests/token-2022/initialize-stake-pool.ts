@@ -93,41 +93,15 @@ describe("initialize-stake-pool", () => {
       ],
       program.programId
     );
-    // const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    //   [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
-    //   program.programId
-    // );
+    const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
+      program.programId
+    );
 
     const minDuration = new anchor.BN(0);
     const maxDuration = new anchor.BN(31536000); // 1 year in seconds
     const baseWeight = new anchor.BN(SCALE_FACTOR_BASE.toString());
     const maxWeight = new anchor.BN(4 * parseInt(SCALE_FACTOR_BASE.toString()));
-
-    let vaultAta = getAssociatedTokenAddressSync(
-      mintToBeStaked,
-      stakePoolKey,
-      true,
-      tokenProgram
-    );
-    console.log("vault ata: " + vaultAta);
-    let initTokenAccIx = createAssociatedTokenAccountInstruction(
-      program.provider.publicKey,
-      vaultAta,
-      stakePoolKey,
-      mintToBeStaked,
-      tokenProgram
-    );
-
-    /* Alternative... */
-    // const initVaultAccountIx = await tokenProgramInstance.methods
-    //   .initializeAccount()
-    //   .accounts({
-    //     account: vaultAta,
-    //     mint: mintToBeStaked,
-    //     owner: stakePoolKey,
-    //     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    //   })
-    //   .instruction();
 
     let initIx = await program.methods
       .initializeStakePool(
@@ -141,7 +115,7 @@ describe("initialize-stake-pool", () => {
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,
         mint: mintToBeStaked,
-        vault: vaultAta,
+        vault: vaultKey,
         tokenProgram: tokenProgram,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         systemProgram: anchor.web3.SystemProgram.programId,
@@ -150,7 +124,7 @@ describe("initialize-stake-pool", () => {
     try {
       await program.provider.sendAndConfirm(
         new anchor.web3.Transaction().add(
-          initTokenAccIx,
+         // initTokenAccIx,
           initIx
         )
       );
@@ -158,7 +132,7 @@ describe("initialize-stake-pool", () => {
       console.log(err);
     }
     const [vault, stakePool] = await Promise.all([
-      tokenProgramInstance.account.account.fetch(vaultAta),
+      tokenProgramInstance.account.account.fetch(vaultKey),
       program.account.stakePool.fetch(stakePoolKey),
     ]);
 
@@ -172,7 +146,7 @@ describe("initialize-stake-pool", () => {
     assert.isNotNull(vault);
     assertKeysEqual(stakePool.authority, program.provider.publicKey);
     assertKeysEqual(stakePool.mint, mintToBeStaked);
-    assertKeysEqual(stakePool.vault, vaultAta);
+    assertKeysEqual(stakePool.vault, vaultKey);
     assertKeysEqual(stakePool.registrar, registrarKey);
     assertKeysEqual(stakePool.creator, program.provider.publicKey);
     // Nothing staked yet
