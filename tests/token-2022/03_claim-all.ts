@@ -195,7 +195,6 @@ describe("claim-all", () => {
         claimBase: {
           owner: depositor1.publicKey,
           stakePool: stakePoolKey,
-          rewardMint: rewardMint1,
           stakeDepositReceipt: stakeReceiptKey,
           tokenProgram: tokenProgram,
         },
@@ -209,6 +208,11 @@ describe("claim-all", () => {
         {
           pubkey: depositerReward1AccKey,
           isWritable: true,
+          isSigner: false,
+        },
+        {
+          pubkey: rewardMint1,
+          isWritable: false,
           isSigner: false,
         },
       ])

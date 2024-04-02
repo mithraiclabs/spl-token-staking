@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_2022::Token2022;
 
 use super::claim_base::*;
 
@@ -10,7 +11,12 @@ pub struct ClaimAll<'info> {
 pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, ClaimAll<'info>>) -> Result<()> {
     {
         let mut stake_pool = ctx.accounts.claim_base.stake_pool.load_mut()?;
-        stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;
+        let step = if ctx.accounts.claim_base.token_program.key() == Token2022::id() {
+            2usize
+        } else {
+            3usize
+        };
+        stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, step)?;
     }
 
     let claimed_amounts = ctx

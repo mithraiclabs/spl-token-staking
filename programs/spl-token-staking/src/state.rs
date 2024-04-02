@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
-use anchor_spl::token_interface::{
-    Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface,
-};
+use anchor_spl::token_interface::TokenAccount as TokenAccountInterface;
 use bytemuck::{Pod, Zeroable};
 use core::primitive;
 use jet_proc_macros::assert_size;
@@ -72,7 +69,8 @@ pub struct RewardPool {
     pub rewards_per_effective_stake: u128,
     /** latest amount of tokens in the vault */
     pub last_amount: u64,
-    _padding0: [u8; 8],
+    pub decimals: u8,
+    _padding0: [u8; 7],
 }
 
 impl RewardPool {
@@ -80,9 +78,10 @@ impl RewardPool {
         self.reward_vault == Pubkey::default()
     }
 
-    pub fn new(reward_vault: &Pubkey) -> Self {
+    pub fn new(reward_vault: &Pubkey, decimals: u8) -> Self {
         let mut res = Self::default();
         res.reward_vault = *reward_vault;
+        res.decimals = decimals;
         res
     }
 

@@ -306,11 +306,6 @@ export const _SplTokenStakingIDL = {
               isSigner: false,
             },
             {
-              name: "rewardMint",
-              isMut: false,
-              isSigner: false,
-            },
-            {
               name: "stakeDepositReceipt",
               isMut: true,
               isSigner: false,
@@ -362,11 +357,6 @@ export const _SplTokenStakingIDL = {
             {
               name: "stakePool",
               isMut: true,
-              isSigner: false,
-            },
-            {
-              name: "rewardMint",
-              isMut: false,
               isSigner: false,
             },
             {
@@ -752,9 +742,13 @@ export const _SplTokenStakingIDL = {
             type: "u64",
           },
           {
+            name: "decimals",
+            type: "u8",
+          },
+          {
             name: "padding0",
             type: {
-              array: ["u8", 8],
+              array: ["u8", 7],
             },
           },
         ],

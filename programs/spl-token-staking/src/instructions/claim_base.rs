@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 use anchor_spl::token_2022::{self, Token2022, TransferChecked};
-use anchor_spl::token_interface::{Mint as MintInterface, TokenInterface};
+use anchor_spl::token_interface::TokenInterface;
 
 use crate::errors::ErrorCode;
 use crate::math::U256;
@@ -17,9 +17,6 @@ pub struct ClaimBase<'info> {
     // StakePool the StakeDepositReceipt belongs to
     #[account(mut)]
     pub stake_pool: AccountLoader<'info, StakePool>,
-
-    // TODO for each reward pool being distributed, a mint will need to be passed, this is probably best done in remaining_accounts.
-    pub reward_mint: InterfaceAccount<'info, MintInterface>,
 
     /// StakeDepositReceipt of the owner that will be used to claim respective rewards
     #[account(
@@ -38,23 +35,32 @@ impl<'info> ClaimBase<'info> {
         &self,
         reward_vault_info: AccountInfo<'info>,
         owner_reward_account_info: AccountInfo<'info>,
+        mint_account_info: Option<AccountInfo<'info>>,
         amount: u64,
+        index: Option<usize>,
     ) -> Result<()> {
         let stake_pool = self.stake_pool.load()?;
 
         if self.token_program.key() == Token2022::id() {
+            if mint_account_info.is_none() || index.is_none() {
+                panic!("No mint or index for a token 2022 ix")
+            }
             let cpi_ctx = CpiContext {
                 program: self.token_program.to_account_info(),
                 accounts: TransferChecked {
                     from: reward_vault_info,
                     to: owner_reward_account_info,
-                    mint: self.reward_mint.to_account_info(),
+                    mint: mint_account_info.unwrap(),
                     authority: self.stake_pool.to_account_info(),
                 },
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[stake_pool_signer_seeds!(stake_pool)],
             };
-            token_2022::transfer_checked(cpi_ctx, amount, self.reward_mint.decimals)
+            token_2022::transfer_checked(
+                cpi_ctx,
+                amount,
+                stake_pool.reward_pools[index.unwrap()].decimals,
+            )
         } else {
             let cpi_ctx = CpiContext {
                 program: self.token_program.to_account_info(),
@@ -84,7 +90,12 @@ impl<'info> ClaimBase<'info> {
                 continue;
             }
             // indexes for the relevant remaining accounts
-            let reward_vault_account_index = remaining_accounts_index * 2;
+            let step = if self.token_program.key() == Token2022::id() {
+                2
+            } else {
+                3
+            };
+            let reward_vault_account_index = remaining_accounts_index * step;
             let owner_account_index = reward_vault_account_index + 1;
             let len = remaining_accounts.len();
             if reward_vault_account_index >= len || owner_account_index >= len {
@@ -114,11 +125,18 @@ impl<'info> ClaimBase<'info> {
 
             let reward_vault_info = &remaining_accounts[reward_vault_account_index];
             let owner_reward_account_info = &remaining_accounts[owner_account_index];
+            let mint_account_info = if self.token_program.key() == Token2022::id() {
+                Some(remaining_accounts[reward_vault_account_index + 2].clone())
+            } else {
+                None
+            };
 
             self.transfer_reward_from_pool_to_owner(
                 reward_vault_info.to_account_info(),
                 owner_reward_account_info.to_account_info(),
+                mint_account_info,
                 total_claimable,
+                Some(index),
             )?;
 
             claimed_amounts[index] = total_claimable;
