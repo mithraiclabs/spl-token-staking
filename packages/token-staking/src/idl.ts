@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "2.0.0",
+  version: "2.0.1",
   name: "spl_token_staking",
   instructions: [
     {
@@ -210,6 +210,11 @@ export const _SplTokenStakingIDL = {
           ],
         },
         {
+          name: "mint",
+          isMut: false,
+          isSigner: false,
+        },
+        {
           name: "from",
           isMut: true,
           isSigner: false,
@@ -301,6 +306,11 @@ export const _SplTokenStakingIDL = {
               isSigner: false,
             },
             {
+              name: "rewardMint",
+              isMut: false,
+              isSigner: false,
+            },
+            {
               name: "stakeDepositReceipt",
               isMut: true,
               isSigner: false,
@@ -352,6 +362,11 @@ export const _SplTokenStakingIDL = {
             {
               name: "stakePool",
               isMut: true,
+              isSigner: false,
+            },
+            {
+              name: "rewardMint",
+              isMut: false,
               isSigner: false,
             },
             {

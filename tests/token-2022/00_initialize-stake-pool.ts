@@ -1,28 +1,15 @@
 import * as anchor from "@coral-xyz/anchor";
-import { SPL_TOKEN_PROGRAM_ID, splTokenProgram } from "@coral-xyz/spl-token";
+import { splTokenProgram } from "@coral-xyz/spl-token";
 import { SplTokenStaking } from "../../target/types/spl_token_staking";
 import { assert } from "chai";
 import { mintToBeStaked } from "./hooks22";
-import {
-  SCALE_FACTOR_BASE,
-  createRegistrar,
-} from "@mithraic-labs/token-staking";
-import {
-  AccountLayout,
-  TOKEN_2022_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccount,
-  createAssociatedTokenAccountInstruction,
-  createInitializeAccountInstruction,
-  getAssociatedTokenAddressSync,
-  getMint,
-} from "@solana/spl-token";
+import { SCALE_FACTOR_BASE } from "@mithraic-labs/token-staking";
+import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import {
   assertBNEqual,
   assertKeyDefault,
   assertKeysEqual,
 } from "../genericTests";
-import { createRealm } from "../utils";
 import {
   GOVERNANCE_PROGRAM_ID,
   GOVERNANCE_PROGRAM_SEED,
@@ -59,7 +46,7 @@ describe("initialize-stake-pool", () => {
   );
 
   before(async () => {
-    // TODO currently governance is incompatible...
+    // TODO currently governance is incompatible with Token 2022...
     // console.log("realm");
     // // create realm and registrar
     // const realmAuthority = program.provider.publicKey;
@@ -121,16 +108,12 @@ describe("initialize-stake-pool", () => {
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .instruction();
-    try {
-      await program.provider.sendAndConfirm(
-        new anchor.web3.Transaction().add(
-         // initTokenAccIx,
-          initIx
-        )
-      );
-    } catch (err) {
-      console.log(err);
-    }
+    await program.provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(
+        initIx
+      )
+    );
+
     const [vault, stakePool] = await Promise.all([
       tokenProgramInstance.account.account.fetch(vaultKey),
       program.account.stakePool.fetch(stakePoolKey),

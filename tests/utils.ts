@@ -5,7 +5,11 @@ import {
   GOVERNANCE_PROGRAM_SEED,
   SPL_GOVERNANCE_IDL,
 } from "@mithraic-labs/spl-governance";
-import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  getAccount,
+} from "@solana/spl-token";
 
 /**
  * Stake with an existing StakePool.
@@ -28,7 +32,8 @@ export const deposit = async (
   duration: anchor.BN,
   receiptNonce: number,
   voterWeightRecord: anchor.Address,
-  rewardVaults: anchor.web3.PublicKey[] = []
+  rewardVaults: anchor.web3.PublicKey[] = [],
+  tokenProgram: anchor.web3.PublicKey = SPL_TOKEN_PROGRAM_ID
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -52,33 +57,31 @@ export const deposit = async (
     ],
     program.programId
   );
-  try {
-    await program.methods
-      .deposit(receiptNonce, amount, duration)
-      .accounts({
-        payer: depositor.publicKey,
-        owner: depositor.publicKey,
-        from: vaultMintAccount,
-        stakePool: stakePoolKey,
-        vault: vaultKey,
-        voterWeightRecord,
-        stakeDepositReceipt: stakeReceiptKey,
-        tokenProgram: SPL_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .remainingAccounts(
-        rewardVaults.map((rewardVaultKey) => ({
-          pubkey: rewardVaultKey,
-          isWritable: false,
-          isSigner: false,
-        }))
-      )
-      .signers([depositor])
-      .rpc();
-  } catch (err) {
-    console.log(err);
-  }
+
+  await program.methods
+    .deposit(receiptNonce, amount, duration)
+    .accounts({
+      payer: depositor.publicKey,
+      owner: depositor.publicKey,
+      mint: stakePoolMint,
+      from: vaultMintAccount,
+      stakePool: stakePoolKey,
+      vault: vaultKey,
+      voterWeightRecord,
+      stakeDepositReceipt: stakeReceiptKey,
+      tokenProgram: tokenProgram,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      systemProgram: anchor.web3.SystemProgram.programId,
+    })
+    .remainingAccounts(
+      rewardVaults.map((rewardVaultKey) => ({
+        pubkey: rewardVaultKey,
+        isWritable: false,
+        isSigner: false,
+      }))
+    )
+    .signers([depositor])
+    .rpc();
 };
 
 export const createRealm = (

@@ -15,6 +15,7 @@ import { SplTokenStakingV0 } from "./idl_v0";
  * @param maxDuration
  * @param authority - defaults to `program.provider.publicKey`
  * @param registar - Registrar key if this StakePool uses SPL-Governance
+ * @param tokenProgram
  */
 export const initStakePool = async (
   program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
@@ -25,6 +26,7 @@ export const initStakePool = async (
   maxDuration = new anchor.BN("18446744073709551615"),
   authority?: anchor.Address,
   registrar: anchor.web3.PublicKey | null = null,
+  tokenProgram: anchor.web3.PublicKey = SPL_TOKEN_PROGRAM_ID
 ) => {
   const _authority = authority
     ? new anchor.web3.PublicKey(authority)
@@ -50,7 +52,7 @@ export const initStakePool = async (
       stakePool: stakePoolKey,
       mint,
       vault: vaultKey,
-      tokenProgram: SPL_TOKEN_PROGRAM_ID,
+      tokenProgram: tokenProgram,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       systemProgram: anchor.web3.SystemProgram.programId,
     })
@@ -65,6 +67,7 @@ export const initStakePool = async (
  * @param rewardMint
  * @param rewardPoolIndex
  * @param authority
+ * @param tokenProgram
  * @returns
  */
 export const addRewardPool = async (
@@ -73,7 +76,8 @@ export const addRewardPool = async (
   stakePoolMint: anchor.Address,
   rewardMint: anchor.web3.PublicKey,
   rewardPoolIndex = 0,
-  authority?: anchor.Address
+  authority?: anchor.Address,
+  tokenProgram: anchor.web3.PublicKey = SPL_TOKEN_PROGRAM_ID,
 ) => {
   const _authority = authority
     ? new anchor.web3.PublicKey(authority)
@@ -103,7 +107,7 @@ export const addRewardPool = async (
       rewardMint,
       stakePool: stakePoolKey,
       rewardVault: rewardVaultKey,
-      tokenProgram: SPL_TOKEN_PROGRAM_ID,
+      tokenProgram: tokenProgram,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       systemProgram: anchor.web3.SystemProgram.programId,
     })
@@ -115,6 +119,7 @@ export const addRewardPool = async (
  * @param program
  * @param payer
  * @param owner
+ * @param mint
  * @param stakePoolKey
  * @param from
  * @param amount
@@ -127,6 +132,7 @@ export const createStakeBuilder = (
   program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
+  mint: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
   from: anchor.Address,
   amount: anchor.BN,
@@ -157,6 +163,7 @@ export const createStakeBuilder = (
     .accounts({
       payer,
       owner,
+      mint: mint,
       from,
       stakePool: stakePoolKey,
       vault: vaultKey,
@@ -178,6 +185,7 @@ export const createStakeBuilder = (
  * @param program
  * @param payer
  * @param owner
+ * @param mint
  * @param stakePoolKey
  * @param from
  * @param amount
@@ -190,6 +198,7 @@ export const createStakeInstruction = async (
   program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
+  mint: anchor.web3.PublicKey,
   stakePoolkey: anchor.Address,
   from: anchor.Address,
   amount: anchor.BN,
@@ -201,6 +210,7 @@ export const createStakeInstruction = async (
     program,
     payer,
     owner,
+    mint,
     stakePoolkey,
     from,
     amount,
@@ -227,6 +237,7 @@ export const deposit = async (
   program: anchor.Program<SplTokenStaking | SplTokenStakingV0>,
   payer: anchor.web3.PublicKey,
   owner: anchor.web3.PublicKey,
+  mint: anchor.web3.PublicKey,
   stakePoolKey: anchor.Address,
   from: anchor.Address,
   amount: anchor.BN,
@@ -245,6 +256,7 @@ export const deposit = async (
     program,
     payer,
     owner,
+    mint,
     stakePoolKey,
     from,
     amount,

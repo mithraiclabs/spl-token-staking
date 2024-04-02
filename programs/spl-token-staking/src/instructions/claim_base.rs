@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, Transfer};
+use anchor_spl::token::{self, Transfer};
+use anchor_spl::token_2022::{self, Token2022, TransferChecked};
+use anchor_spl::token_interface::{Mint as MintInterface, TokenInterface};
 
 use crate::errors::ErrorCode;
 use crate::math::U256;
@@ -16,6 +18,9 @@ pub struct ClaimBase<'info> {
     #[account(mut)]
     pub stake_pool: AccountLoader<'info, StakePool>,
 
+    // TODO for each reward pool being distributed, a mint will need to be passed, this is probably best done in remaining_accounts.
+    pub reward_mint: InterfaceAccount<'info, MintInterface>,
+
     /// StakeDepositReceipt of the owner that will be used to claim respective rewards
     #[account(
       mut,
@@ -24,7 +29,7 @@ pub struct ClaimBase<'info> {
     )]
     pub stake_deposit_receipt: Account<'info, StakeDepositReceipt>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> ClaimBase<'info> {
@@ -36,17 +41,33 @@ impl<'info> ClaimBase<'info> {
         amount: u64,
     ) -> Result<()> {
         let stake_pool = self.stake_pool.load()?;
-        let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
-            accounts: Transfer {
-                from: reward_vault_info,
-                to: owner_reward_account_info,
-                authority: self.stake_pool.to_account_info(),
-            },
-            remaining_accounts: Vec::new(),
-            signer_seeds: &[stake_pool_signer_seeds!(stake_pool)],
-        };
-        token::transfer(cpi_ctx, amount)
+
+        if self.token_program.key() == Token2022::id() {
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: TransferChecked {
+                    from: reward_vault_info,
+                    to: owner_reward_account_info,
+                    mint: self.reward_mint.to_account_info(),
+                    authority: self.stake_pool.to_account_info(),
+                },
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[stake_pool_signer_seeds!(stake_pool)],
+            };
+            token_2022::transfer_checked(cpi_ctx, amount, self.reward_mint.decimals)
+        } else {
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: Transfer {
+                    from: reward_vault_info,
+                    to: owner_reward_account_info,
+                    authority: self.stake_pool.to_account_info(),
+                },
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[stake_pool_signer_seeds!(stake_pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        }
     }
 
     /// Iterated over reward pools to calculate amount claimable from each and

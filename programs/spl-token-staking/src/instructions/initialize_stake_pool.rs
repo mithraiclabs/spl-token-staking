@@ -1,17 +1,12 @@
-use std::str::FromStr;
-
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token};
-use anchor_spl::token_2022::Token2022;
-use anchor_spl::token_interface::{Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface};
+use anchor_spl::token_interface::{
+    Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface,
+};
 
 use crate::{
     errors::ErrorCode,
     state::{StakePool, SCALE_FACTOR_BASE},
 };
-
-const TOKEN: Pubkey = anchor_spl::token::spl_token::ID;
-const TOKEN_2022: Pubkey = anchor_spl::token_2022::spl_token_2022::ID;
 
 #[derive(Accounts)]
 #[instruction(
@@ -30,9 +25,6 @@ pub struct InitializeStakePool<'info> {
     pub authority: UncheckedAccount<'info>,
 
     /// SPL Token Mint of the underlying token to be deposited for staking
-    #[account(
-      // TODO validate token or token2022
-    )]
     pub mint: InterfaceAccount<'info, MintInterface>,
 
     #[account(

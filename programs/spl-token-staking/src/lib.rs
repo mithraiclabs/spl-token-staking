@@ -11,6 +11,12 @@ use crate::instructions::*;
 
 declare_id!("STAKEGztX7S1MUHxcQHieZhELCntb9Ys9BgUbeEtMu1");
 
+// Either token program can be used for any instruction, e.g.:
+// However, it must match the mint (e.g. if mints use 2022, you must pass 2022)
+// const TOKEN: Pubkey = anchor_spl::token::spl_token::ID;
+// const TOKEN_2022: Pubkey = anchor_spl::token_2022::spl_token_2022::ID;
+// Equivalent to {TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID} from @solana/spl-token
+
 #[program]
 pub mod spl_token_staking {
     use super::*;

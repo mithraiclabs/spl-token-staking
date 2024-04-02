@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token_interface::{
+  Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface,
+};
 
 use crate::state::{RewardPool, StakePool};
 use crate::errors::ErrorCode;
@@ -15,7 +17,7 @@ pub struct AddRewardPool<'info> {
   pub authority: Signer<'info>,
 
   /// SPL Token Mint of the token that will be distributed as rewards
-  pub reward_mint: Account<'info, Mint>,
+  pub reward_mint: InterfaceAccount<'info, MintInterface>,
 
   /// StakePool where the RewardPool will be added
   #[account(
@@ -35,9 +37,9 @@ pub struct AddRewardPool<'info> {
     token::mint = reward_mint,
     token::authority = stake_pool,
   )]
-  pub reward_vault: Account<'info, TokenAccount>,
+  pub reward_vault: InterfaceAccount<'info, TokenAccountInterface>,
 
-  pub token_program: Program<'info, Token>,
+  pub token_program: Interface<'info, TokenInterface>,
   pub rent: Sysvar<'info, Rent>,
   pub system_program: Program<'info, System>,
 }

@@ -1,5 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Transfer};
+
+use anchor_spl::token_2022::{self, Token2022, TransferChecked};
+use anchor_spl::token_interface::{
+    Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface,
+};
 
 use crate::errors::ErrorCode;
 use crate::state::{u128, StakeDepositReceipt, StakePool, VoterWeightRecord};
@@ -16,13 +21,15 @@ pub struct Deposit<'info> {
     /// CHECK: No check needed since this account will own the StakeReceipt.
     pub owner: UncheckedAccount<'info>,
 
+    pub mint: InterfaceAccount<'info, MintInterface>,
+
     /// Token Account to transfer StakePool's `mint` token from, to be deposited into the vault
     #[account(mut)]
-    pub from: Account<'info, TokenAccount>,
+    pub from: InterfaceAccount<'info, TokenAccountInterface>,
 
     /// Vault of the StakePool token will be transfer to
     #[account(mut)]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccountInterface>,
 
     /// VoterWeightRecord which caches the total weighted stake for the owner.
     /// In order to allow StakePools to add Governance in the future, this
@@ -45,6 +52,7 @@ pub struct Deposit<'info> {
     #[account(
       mut,
       has_one = vault @ ErrorCode::InvalidStakePoolVault,
+      has_one = mint
     )]
     pub stake_pool: AccountLoader<'info, StakePool>,
 
@@ -62,7 +70,7 @@ pub struct Deposit<'info> {
     )]
     pub stake_deposit_receipt: Account<'info, StakeDepositReceipt>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
 }
@@ -70,15 +78,28 @@ pub struct Deposit<'info> {
 impl<'info> Deposit<'info> {
     /// Transfer the StakePool's `mint` from the payer's address to the StakePool vault.
     pub fn transfer_from_user_to_stake_vault(&self, amount: u64) -> Result<()> {
-        let cpi_ctx = CpiContext::new(
-            self.token_program.to_account_info(),
-            Transfer {
-                from: self.from.to_account_info(),
-                to: self.vault.to_account_info(),
-                authority: self.payer.to_account_info(),
-            },
-        );
-        token::transfer(cpi_ctx, amount)
+        if self.token_program.key() == Token2022::id() {
+            let cpi_ctx = CpiContext::new(
+                self.token_program.to_account_info(),
+                TransferChecked {
+                    from: self.from.to_account_info(),
+                    to: self.vault.to_account_info(),
+                    mint: self.mint.to_account_info(),
+                    authority: self.payer.to_account_info(),
+                },
+            );
+            token_2022::transfer_checked(cpi_ctx, amount, self.mint.decimals)
+        } else {
+            let cpi_ctx = CpiContext::new(
+                self.token_program.to_account_info(),
+                Transfer {
+                    from: self.from.to_account_info(),
+                    to: self.vault.to_account_info(),
+                    authority: self.payer.to_account_info(),
+                },
+            );
+            token::transfer(cpi_ctx, amount)
+        }
     }
 }
 

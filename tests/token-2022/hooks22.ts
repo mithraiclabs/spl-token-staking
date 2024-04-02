@@ -10,6 +10,7 @@ import {
   createMintToCheckedInstruction,
   createMintToInstruction,
   getAssociatedTokenAddressSync,
+  getMint,
   getMintLen,
 } from "@solana/spl-token";
 
@@ -221,19 +222,19 @@ export const createDepositorSplAccounts = async (
   mintStake = mintToBeStaked,
   mintToBeStakedAmount: number | bigint = 10_000_000_000
 ) => {
-  const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
-      mintStake.toBuffer(),
-      program.provider.publicKey.toBuffer(),
-      Buffer.from("stakePool", "utf-8"),
-    ],
-    program.programId
-  );
+  // const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+  //   [
+  //     new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
+  //     mintStake.toBuffer(),
+  //     program.provider.publicKey.toBuffer(),
+  //     Buffer.from("stakePool", "utf-8"),
+  //   ],
+  //   program.programId
+  // );
   const mintToBeStakedAccount = getAssociatedTokenAddressSync(
     mintStake,
     depositor.publicKey,
-    false,
+    undefined,
     tokenProgram
   );
   const createMintToBeStakedAccountIx = createAssociatedTokenAccountInstruction(
@@ -243,23 +244,24 @@ export const createDepositorSplAccounts = async (
     mintStake,
     tokenProgram
   );
+  
   // mint 10 of StakePool's mint to provider wallet
-  const mintIx = createMintToInstruction(
+  const mintIx = createMintToCheckedInstruction(
     mintStake,
     mintToBeStakedAccount,
     program.provider.publicKey,
     mintToBeStakedAmount,
-    undefined,
+    TEST_MINT_DECIMALS,
+    [],
     tokenProgram
   );
   const mintTx = new anchor.web3.Transaction()
     .add(createMintToBeStakedAccountIx)
     .add(mintIx);
   // set up depositor account
-  await Promise.all([
-    airdropSol(program.provider.connection, depositor.publicKey, 2),
-    program.provider.sendAndConfirm(mintTx),
-  ]);
+  await airdropSol(program.provider.connection, depositor.publicKey, 2);
+  await program.provider.sendAndConfirm(mintTx);
+
 
   return depositor;
 };

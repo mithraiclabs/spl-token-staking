@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
+use anchor_spl::token_interface::{
+    Mint as MintInterface, TokenAccount as TokenAccountInterface, TokenInterface,
+};
 use bytemuck::{Pod, Zeroable};
 use core::primitive;
 use jet_proc_macros::assert_size;
@@ -194,9 +197,9 @@ impl StakePool {
                 );
                 return err!(ErrorCode::InvalidRewardPoolVault);
             }
-
-            let token_account: Account<'info, TokenAccount> =
-                Account::try_from(&account_info).map_err(|_| ErrorCode::InvalidRewardPoolVault)?;
+            let token_account: InterfaceAccount<'info, TokenAccountInterface> =
+                InterfaceAccount::try_from(&account_info)
+                    .map_err(|_| ErrorCode::InvalidRewardPoolVault)?;
             remaining_accounts_index += reward_vault_account_offset;
 
             if reward_pool.last_amount == token_account.amount {
