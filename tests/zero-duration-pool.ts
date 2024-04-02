@@ -100,6 +100,7 @@ describe("zero-duration-pool", () => {
       .accounts({
         payer: depositor.publicKey,
         owner: depositor.publicKey,
+        mint: mintToBeStaked,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,

@@ -12,9 +12,9 @@ pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, ClaimAll<'info>>) -> Re
     {
         let mut stake_pool = ctx.accounts.claim_base.stake_pool.load_mut()?;
         let step = if ctx.accounts.claim_base.token_program.key() == Token2022::id() {
-            2usize
-        } else {
             3usize
+        } else {
+            2usize
         };
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, step)?;
     }

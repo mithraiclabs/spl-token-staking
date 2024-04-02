@@ -91,9 +91,9 @@ impl<'info> ClaimBase<'info> {
             }
             // indexes for the relevant remaining accounts
             let step = if self.token_program.key() == Token2022::id() {
-                2
-            } else {
                 3
+            } else {
+                2
             };
             let reward_vault_account_index = remaining_accounts_index * step;
             let owner_account_index = reward_vault_account_index + 1;

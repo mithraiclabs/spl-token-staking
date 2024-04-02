@@ -135,6 +135,7 @@ describe("withdraw", () => {
         vault: vaultKey,
         voterWeightRecord: voterWeightRecordKey,
         destination: mintToBeStakedAccountKey,
+        mint: mintToBeStaked,
       })
       .remainingAccounts([
         {
@@ -251,6 +252,7 @@ describe("withdraw", () => {
         vault: vaultKey,
         voterWeightRecord: voterWeightRecordKey,
         destination: mintToBeStakedAccountKey,
+        mint: mintToBeStaked,
       })
       .remainingAccounts([
         {
@@ -334,6 +336,7 @@ describe("withdraw", () => {
           vault: vaultKey,
           voterWeightRecord: voterWeightRecordKey,
           destination: mintToBeStakedAccountKey,
+          mint: mintToBeStaked,
         })
         .remainingAccounts([
           {

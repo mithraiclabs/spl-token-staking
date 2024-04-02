@@ -179,8 +179,9 @@ impl StakePool {
 
             if remaining_accounts_index >= remaining_accounts.len() {
                 msg!(
-                    "Missing at least one reward vault account. Failed at index {:?}",
-                    remaining_accounts_index
+                    "Missing at least one reward vault account. Failed at index {:?} but passed {:?} accounts",
+                    remaining_accounts_index,
+                    remaining_accounts.len()
                 );
                 return err!(ErrorCode::InvalidRewardPoolVaultIndex);
             }
@@ -190,9 +191,10 @@ impl StakePool {
             // indexes line up.
             if reward_pool.reward_vault != account_info.key() {
                 msg!(
-                    "expected pool: {:?} but got {:?}",
+                    "expected pool: {:?} but got {:?} at index {:?}",
                     reward_pool.reward_vault,
-                    account_info.key()
+                    account_info.key(),
+                    remaining_accounts_index
                 );
                 return err!(ErrorCode::InvalidRewardPoolVault);
             }

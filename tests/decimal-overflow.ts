@@ -130,6 +130,7 @@ describe("decimal-overflow", () => {
       .accounts({
         payer: depositor.publicKey,
         owner: depositor.publicKey,
+        mint: mintToBeStaked,
         from: mintToBeStakedAccount,
         stakePool: stakePoolKey,
         vault: vaultKey,

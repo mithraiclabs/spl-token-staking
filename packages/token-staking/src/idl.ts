@@ -391,6 +391,12 @@ export const _SplTokenStakingIDL = {
           isSigner: false,
           docs: ["Token account to transfer the previously staked token to"],
         },
+        {
+          name: "mint",
+          isMut: false,
+          isSigner: false,
+          docs: ["Staking pool's mint"],
+        },
       ],
       args: [],
     },

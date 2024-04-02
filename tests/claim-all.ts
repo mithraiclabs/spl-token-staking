@@ -480,16 +480,16 @@ describe("claim-all", () => {
 
     // NOTE: we must pass an array of RewardPoolVault and user token accounts
     // as remaining accounts
-    await program.methods
+    let claimIx = await program.methods
       .claimAll()
       .accounts({
         claimBase: {
           owner: depositor1.publicKey,
           stakePool: stakePoolKey,
           stakeDepositReceipt: stakeReceiptKey,
+          tokenProgram: TOKEN_PROGRAM_ID
         },
       })
-      .signers([depositor1])
       .remainingAccounts([
         // reward 1
         {
@@ -514,7 +514,14 @@ describe("claim-all", () => {
           isSigner: false,
         },
       ])
-      .rpc({ skipPreflight: true });
+      .instruction();
+    try {
+      await program.provider.sendAndConfirm(new Transaction().add(claimIx), [
+        depositor1,
+      ]);
+    } catch (err) {
+      console.log(err);
+    }
 
     const [depositerReward1Account, depositerReward2Account] =
       await Promise.all([

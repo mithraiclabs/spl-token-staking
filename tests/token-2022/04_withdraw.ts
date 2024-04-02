@@ -4,36 +4,31 @@ import {
   createDepositorSplAccounts,
   mintToBeStaked,
   rewardMint1,
-  rewardMint2,
 } from "./hooks22";
 import {
   TOKEN_2022_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
-  createBurnInstruction,
-  createMintToInstruction,
   createTransferInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
 import {
   addRewardPool,
+  fetchVoterWeightRecord,
   initStakePool,
-  SplTokenStaking,
 } from "@mithraic-labs/token-staking";
 import { deposit } from ".././utils";
 import { assertBNEqual } from ".././genericTests";
-import { Transaction } from "@solana/web3.js";
+import { SplTokenStaking } from "../../target/types/spl_token_staking";
 
-describe("claim-all", () => {
+describe("withdraw", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgram = TOKEN_2022_PROGRAM_ID;
-  const splTokenProgramInstance = splTokenProgram({
-    programId: tokenProgram,
-  });
+  const tokenProgramInstance = splTokenProgram({ programId: tokenProgram });
   const depositor1 = new anchor.web3.Keypair();
   const depositor2 = new anchor.web3.Keypair();
-  const stakePoolNonce = 4;
+  const stakePoolNonce = 5;
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       new anchor.BN(stakePoolNonce).toArrayLike(Buffer, "le", 1),
@@ -41,6 +36,10 @@ describe("claim-all", () => {
       program.provider.publicKey.toBuffer(),
       Buffer.from("stakePool", "utf-8"),
     ],
+    program.programId
+  );
+  const [vaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [stakePoolKey.toBuffer(), Buffer.from("vault", "utf-8")],
     program.programId
   );
   const [rewardVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -57,24 +56,16 @@ describe("claim-all", () => {
     undefined,
     tokenProgram
   );
-  const depositerReward1AccKey = getAssociatedTokenAddressSync(
+  const depositorReward1AccountKey = getAssociatedTokenAddressSync(
     rewardMint1,
     depositor1.publicKey,
     undefined,
     tokenProgram
   );
-  const [voterWeightRecordKey1] = anchor.web3.PublicKey.findProgramAddressSync(
+  const [voterWeightRecordKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       stakePoolKey.toBuffer(),
       depositor1.publicKey.toBuffer(),
-      Buffer.from("voterWeightRecord", "utf-8"),
-    ],
-    program.programId
-  );
-  const [voterWeightRecordKey2] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      stakePoolKey.toBuffer(),
-      depositor2.publicKey.toBuffer(),
       Buffer.from("voterWeightRecord", "utf-8"),
     ],
     program.programId
@@ -114,18 +105,7 @@ describe("claim-all", () => {
           owner: depositor1.publicKey,
           registrar: null,
           stakePool: stakePoolKey,
-          voterWeightRecord: voterWeightRecordKey1,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          systemProgram: anchor.web3.SystemProgram.programId,
-        })
-        .rpc(),
-      program.methods
-        .createVoterWeightRecord()
-        .accounts({
-          owner: depositor2.publicKey,
-          registrar: null,
-          stakePool: stakePoolKey,
-          voterWeightRecord: voterWeightRecordKey2,
+          voterWeightRecord: voterWeightRecordKey,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
@@ -133,7 +113,7 @@ describe("claim-all", () => {
     ]);
   });
 
-  it("Claim all owed rewards", async () => {
+  it("withdraw unlocked tokens", async () => {
     const receiptNonce = 0;
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
@@ -144,6 +124,15 @@ describe("claim-all", () => {
       ],
       program.programId
     );
+    const [
+      stakePoolBefore,
+      depositerMintAccountBefore,
+      voterWeightRecordBefore,
+    ] = await Promise.all([
+      program.account.stakePool.fetch(stakePoolKey),
+      tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
+    ]);
     // deposit 1 token
     await deposit(
       program,
@@ -154,43 +143,13 @@ describe("claim-all", () => {
       new anchor.BN(1_000_000_000),
       new anchor.BN(0),
       receiptNonce,
-      voterWeightRecordKey1,
+      voterWeightRecordKey,
       undefined,
       tokenProgram
     );
-    const totalReward1 = 1_000_000_000;
-    const transferIx = createTransferInstruction(
-      getAssociatedTokenAddressSync(
-        rewardMint1,
-        program.provider.publicKey,
-        undefined,
-        tokenProgram
-      ),
-      rewardVaultKey,
-      program.provider.publicKey,
-      totalReward1,
-      [],
-      tokenProgram
-    );
-    const createDepositorReward1AccountIx =
-      createAssociatedTokenAccountInstruction(
-        program.provider.publicKey,
-        depositerReward1AccKey,
-        depositor1.publicKey,
-        rewardMint1,
-        tokenProgram
-      );
-    // transfer 1 reward token to RewardPool at index 0
-    await program.provider.sendAndConfirm(
-      new anchor.web3.Transaction()
-        .add(transferIx)
-        .add(createDepositorReward1AccountIx)
-    );
 
-    // NOTE: we must pass an array of RewardPoolVault and user token accounts
-    // as remaining accounts
-    let ix = await program.methods
-      .claimAll()
+    await program.methods
+      .withdraw()
       .accounts({
         claimBase: {
           owner: depositor1.publicKey,
@@ -198,6 +157,10 @@ describe("claim-all", () => {
           stakeDepositReceipt: stakeReceiptKey,
           tokenProgram: tokenProgram,
         },
+        vault: vaultKey,
+        voterWeightRecord: voterWeightRecordKey,
+        destination: mintToBeStakedAccountKey,
+        mint: mintToBeStaked,
       })
       .remainingAccounts([
         {
@@ -206,7 +169,7 @@ describe("claim-all", () => {
           isSigner: false,
         },
         {
-          pubkey: depositerReward1AccKey,
+          pubkey: depositorReward1AccountKey,
           isWritable: true,
           isSigner: false,
         },
@@ -216,31 +179,38 @@ describe("claim-all", () => {
           isSigner: false,
         },
       ])
-      .instruction();
+      .signers([depositor1])
+      .rpc({ skipPreflight: true });
 
-      try{
-    await program.provider.sendAndConfirm(new Transaction().add(ix), [
-      depositor1,
+    const [
+      stakePoolAfter,
+      depositerMintAccount,
+      vaultAfter,
+      stakeDepositReceipt,
+      voterWeightRecordAfter,
+    ] = await Promise.all([
+      program.account.stakePool.fetch(stakePoolKey),
+      tokenProgramInstance.account.account.fetch(mintToBeStakedAccountKey),
+      tokenProgramInstance.account.account.fetch(vaultKey),
+      program.provider.connection.getAccountInfo(stakeReceiptKey),
+      fetchVoterWeightRecord(program, voterWeightRecordKey),
     ]);
-  }catch(err){
-    console.log(err);
-  }
-
-    const [depositerReward1Account, stakeReceipt, stakePool] =
-      await Promise.all([
-        splTokenProgramInstance.account.account.fetch(depositerReward1AccKey),
-        program.account.stakeDepositReceipt.fetch(stakeReceiptKey),
-        program.account.stakePool.fetch(stakePoolKey),
-      ]);
-
-    assertBNEqual(depositerReward1Account.amount, totalReward1);
-    assertBNEqual(stakeReceipt.claimedAmounts[0], totalReward1);
-    assertBNEqual(stakePool.rewardPools[0].lastAmount, 0);
     assertBNEqual(
-      stakePool.rewardPools[0].rewardsPerEffectiveStake,
-      totalReward1 // scale weight =1
+      voterWeightRecordBefore.voterWeight,
+      voterWeightRecordAfter.voterWeight
+    );
+    assertBNEqual(
+      stakePoolBefore.totalWeightedStake,
+      stakePoolAfter.totalWeightedStake
+    );
+    assertBNEqual(
+      depositerMintAccount.amount,
+      depositerMintAccountBefore.amount
+    );
+    assertBNEqual(vaultAfter.amount, 0);
+    assert.isNull(
+      stakeDepositReceipt,
+      "StakeDepositReceipt account not closed"
     );
   });
-
-  // TODO add multiple accounts to the test the step 3 account iterator...
 });

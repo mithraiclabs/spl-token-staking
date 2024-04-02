@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount, Transfer};
+use anchor_spl::token::{self, Transfer};
+use anchor_spl::token_2022::{self, Token2022, TransferChecked};
+use anchor_spl::token_interface::{Mint as MintInterface, TokenAccount as TokenAccountInterface};
 
 use crate::{
     errors::ErrorCode,
@@ -16,7 +18,7 @@ pub struct Withdraw<'info> {
 
     /// Vault of the StakePool token will be transferred from
     #[account(mut)]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccountInterface>,
 
     #[account(
         mut,
@@ -34,7 +36,11 @@ pub struct Withdraw<'info> {
 
     /// Token account to transfer the previously staked token to
     #[account(mut)]
-    pub destination: Account<'info, TokenAccount>,
+    pub destination: InterfaceAccount<'info, TokenAccountInterface>,
+
+    // TODO could put a has_one on this but it would fail on transfer anyways if bad.
+    /// Staking pool's mint
+    pub mint: InterfaceAccount<'info, MintInterface>,
 }
 
 impl<'info> Withdraw<'info> {
@@ -51,19 +57,37 @@ impl<'info> Withdraw<'info> {
     pub fn transfer_staked_tokens_to_owner(&self) -> Result<()> {
         let stake_pool = self.claim_base.stake_pool.load()?;
         let signer_seeds: &[&[&[u8]]] = &[stake_pool_signer_seeds!(stake_pool)];
-        let cpi_ctx = CpiContext::new_with_signer(
-            self.claim_base.token_program.to_account_info(),
-            Transfer {
-                from: self.vault.to_account_info(),
-                to: self.destination.to_account_info(),
-                authority: self.claim_base.stake_pool.to_account_info(),
-            },
-            signer_seeds,
-        );
-        token::transfer(
-            cpi_ctx,
-            self.claim_base.stake_deposit_receipt.deposit_amount,
-        )
+        if self.mint.to_account_info().owner.eq(&Token2022::id()) {
+            let cpi_ctx = CpiContext::new_with_signer(
+                self.claim_base.token_program.to_account_info(),
+                TransferChecked {
+                    from: self.vault.to_account_info(),
+                    to: self.destination.to_account_info(),
+                    mint: self.mint.to_account_info(),
+                    authority: self.claim_base.stake_pool.to_account_info(),
+                },
+                signer_seeds,
+            );
+            token_2022::transfer_checked(
+                cpi_ctx,
+                self.claim_base.stake_deposit_receipt.deposit_amount,
+                self.mint.decimals,
+            )
+        } else {
+            let cpi_ctx = CpiContext::new_with_signer(
+                self.claim_base.token_program.to_account_info(),
+                Transfer {
+                    from: self.vault.to_account_info(),
+                    to: self.destination.to_account_info(),
+                    authority: self.claim_base.stake_pool.to_account_info(),
+                },
+                signer_seeds,
+            );
+            token::transfer(
+                cpi_ctx,
+                self.claim_base.stake_deposit_receipt.deposit_amount,
+            )
+        }
     }
 
     pub fn close_stake_deposit_receipt(&self) -> Result<()> {
@@ -82,7 +106,12 @@ pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, Withdraw<'info>>) -> Re
     {
         let mut stake_pool = ctx.accounts.claim_base.stake_pool.load_mut()?;
         // Recalculate rewards for stake prior, so withdrawing user can receive all rewards
-        stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;
+        let step = if ctx.accounts.claim_base.token_program.key() == Token2022::id() {
+            3usize
+        } else {
+            2usize
+        };
+        stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, step)?;
         // Decrement total weighted stake for future deposit reward ownership to be calculated correctly
         let total_staked = stake_pool
             .total_weighted_stake_u128()
