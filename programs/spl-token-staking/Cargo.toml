@@ -27,3 +27,12 @@ mpl-token-metadata = { version = "=1.13.2" }
 
 solana-security-txt = "1.1.1"
 default-env = "0.1.1"
+
+# Last built with:
+# anchor 0.28.0
+# solana 1.17.9
+
+# KNOWN BUILD ISSUES
+# ProgramFailedToComplete bugs in tests when building with:
+# anchor 0.29.0
+# solana 1.18.1
