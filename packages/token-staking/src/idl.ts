@@ -177,6 +177,37 @@ export const _SplTokenStakingIDL = {
       ],
     },
     {
+      name: "setFlags",
+      docs: [
+        "Update various stakepool settings. Simply sum the settings together and pass as a single",
+        "number. Allowed settings:",
+        "* ESCAPE_HATCH_ENABLED -  1",
+        "* PLACEHOLDER_A - 2",
+        "* PLACEHOLDER_B - 4",
+        "",
+        "Can only be invoked by the StakePool's authority.",
+      ],
+      accounts: [
+        {
+          name: "authority",
+          isMut: true,
+          isSigner: true,
+          docs: ["Current authority of the StakePool"],
+        },
+        {
+          name: "stakePool",
+          isMut: true,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: "flags",
+          type: "u8",
+        },
+      ],
+    },
+    {
       name: "deposit",
       docs: [
         "Deposit (aka Stake) a wallet's tokens to the specified [StakePool](state::StakePool).",
@@ -554,9 +585,21 @@ export const _SplTokenStakingIDL = {
             type: "u8",
           },
           {
+            name: "flags",
+            docs: [
+              "Each bit constrols a setting. Add settings together as needed. Settings supported:",
+              "* `ESCAPE_HATCH_ENABLED` - 1",
+              "* PLACEHOLDER_A - 2",
+              "* PLACEHOLDER_B - 4",
+              "",
+              "Do not access directly, use functions such as `escape_hatch_enabled`",
+            ],
+            type: "u8",
+          },
+          {
             name: "padding0",
             type: {
-              array: ["u8", 6],
+              array: ["u8", 5],
             },
           },
           {

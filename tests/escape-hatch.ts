@@ -1,5 +1,4 @@
 import * as anchor from "@coral-xyz/anchor";
-import { splTokenProgram } from "@coral-xyz/spl-token";
 import { SplTokenStaking } from "../target/types/spl_token_staking";
 import {
   createDepositorSplAccounts,
@@ -8,20 +7,20 @@ import {
 } from "./hooks";
 import {
   TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
-  createTransferInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
+import {
+  ESCAPE_HATCH_ENABLED,
+  addRewardPool,
+  initStakePool,
+} from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
-import { assertBNEqual } from "./genericTests";
 import { assertParsedErrorStaking } from "./errors";
 
 describe("escape hatch withdrawals", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
-  const tokenProgramInstance = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
   const depositor1 = new anchor.web3.Keypair();
   const depositor2 = new anchor.web3.Keypair();
   const stakePoolNonce = 15;
@@ -78,16 +77,6 @@ describe("escape hatch withdrawals", () => {
   });
 
   it("Fail to withdraw locked tokens", async () => {
-    const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        depositor1.publicKey.toBuffer(),
-        stakePoolKey.toBuffer(),
-        new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
-        Buffer.from("stakeDepositReceipt", "utf-8"),
-      ],
-      program.programId
-    );
-
     // deposit 1 token
     await deposit(
       program,
@@ -116,8 +105,22 @@ describe("escape hatch withdrawals", () => {
   });
 
   it("Admin triggers the escape hatch ", async () => {
-    // TODO
-    assert.ok(false);
+    let pool = await program.account.stakePool.fetch(stakePoolKey);
+    assert.equal(pool.flags, 0);
+
+    let escapeIx = await program.methods
+      .setFlags(ESCAPE_HATCH_ENABLED)
+      .accounts({
+        authority: program.provider.publicKey,
+        stakePool: stakePoolKey,
+      })
+      .instruction();
+    await program.provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(escapeIx)
+    );
+
+    pool = await program.account.stakePool.fetch(stakePoolKey);
+    assert.equal(pool.flags, ESCAPE_HATCH_ENABLED);
   });
 
   it("Can now withdraw unlocked tokens", async () => {
@@ -126,7 +129,7 @@ describe("escape hatch withdrawals", () => {
       new anchor.web3.Transaction().add(ix),
       [depositor1]
     );
-    // TODO checked balances...
+    // TODO check balances...
   });
 
   /**
