@@ -132,6 +132,28 @@ describe("escape hatch withdrawals", () => {
     // TODO check balances...
   });
 
+  it("Bad user tries to trigger the escape hatch - fails", async () => {
+    let badUser = anchor.web3.Keypair.generate();
+
+    let escapeIx = await program.methods
+      .setFlags(ESCAPE_HATCH_ENABLED)
+      .accounts({
+        authority: badUser.publicKey,
+        stakePool: stakePoolKey,
+      })
+      .instruction();
+
+    try {
+      await program.provider.sendAndConfirm(
+        new anchor.web3.Transaction().add(escapeIx),
+        [badUser]
+      );
+    } catch (err) {
+      assertParsedErrorStaking(err, "Invalid StakePool authority");
+      return;
+    }
+  });
+
   /**
    * A generic withdraw ix that notable is the same before/after escape hatch is engaged.
    * @returns
