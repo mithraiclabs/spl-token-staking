@@ -90,12 +90,12 @@ impl<'info> Withdraw<'info> {
 
 pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
     ctx.accounts.validate_stake_pool_and_owner()?;
-    ctx.accounts
-        .claim_base
-        .stake_deposit_receipt
-        .validate_unlocked()?;
+
+    let escape_hatch_enabled: bool;
     {
         let mut stake_pool = ctx.accounts.claim_base.stake_pool.load_mut()?;
+        escape_hatch_enabled = stake_pool.escape_hatch_enabled();
+
         // Recalculate rewards for stake prior, so withdrawing user can receive all rewards
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;
         // Decrement total weighted stake for future deposit reward ownership to be calculated correctly
@@ -109,7 +109,15 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
             )
             .unwrap();
         stake_pool.total_weighted_stake = u128(total_staked.to_le_bytes());
+    } // release mutable borrow of stake_pool
+
+    if !escape_hatch_enabled {
+        ctx.accounts
+            .claim_base
+            .stake_deposit_receipt
+            .validate_unlocked()?;
     }
+
     ctx.accounts.transfer_staked_tokens_to_owner()?;
     ctx.accounts.burn_stake_weight_tokens_from_owner()?;
     // claim all unclaimed rewards

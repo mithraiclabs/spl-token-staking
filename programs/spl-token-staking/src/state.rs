@@ -20,6 +20,10 @@ pub const SCALE_FACTOR_BASE: u64 = 1_000_000_000;
 pub const SCALE_FACTOR_BASE_SQUARED: u64 = 1_000_000_000_000_000_000;
 pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 
+// SETTINGS
+// Note: These are summed and passed to `flags`
+pub const ESCAPE_HATCH_ENABLED: u8 = 1;
+
 #[allow(non_camel_case_types)]
 /// Definitely not your primitive u128...but Anchor thinks it is...
 #[derive(Copy, Clone, Default, Zeroable, AnchorDeserialize, AnchorSerialize, Pod, Debug)]
@@ -122,8 +126,15 @@ pub struct StakePool {
     pub nonce: u8,
     /** Bump seed for stake_mint */
     pub bump_seed: u8,
+    /// Each bit constrols a setting. Add settings together as needed. Settings supported:
+    /// * `ESCAPE_HATCH_ENABLED` - 1
+    /// * PLACEHOLDER_A - 2
+    /// * PLACEHOLDER_B - 4
+    ///
+    /// Do not access directly, use functions such as `escape_hatch_enabled`
+    pub flags: u8,
     // padding to next 8-byte
-    _padding0: [u8; 6],
+    _padding0: [u8; 5],
     _reserved0: [u8; 256],
 }
 
@@ -133,6 +144,11 @@ impl StakePool {
     /// Extract the underlying u128 value of `total_weighted_stake`
     pub fn total_weighted_stake_u128(&self) -> primitive::u128 {
         self.total_weighted_stake.as_u128()
+    }
+
+    /// True if flag `ESCAPE_HATCH_ENABLED` active, false otherwise
+    pub fn escape_hatch_enabled(&self) -> bool {
+        (self.flags & 0b0000_0001) != 0
     }
 
     pub fn get_claimed_amounts_of_reward_pools(&self) -> [u128; MAX_REWARD_POOLS] {
@@ -427,5 +443,4 @@ mod tests {
         let max_duration = stake_pool.max_duration;
         assert_eq!(stake_pool.get_stake_weight(max_duration + 1), base_weight);
     }
-
 }
