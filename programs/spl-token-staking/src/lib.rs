@@ -27,8 +27,8 @@ pub mod spl_token_staking {
         initialize_stake_pool::handler(ctx, nonce, max_weight, min_duration, max_duration)
     }
 
-    /// DANGEROUSLY Update `authority` of [StakePool](state::StakePool) to `new_authority`. 
-    /// This is useful for quickly setting up a StakePool and then transfering it to a 
+    /// DANGEROUSLY Update `authority` of [StakePool](state::StakePool) to `new_authority`.
+    /// This is useful for quickly setting up a StakePool and then transfering it to a
     /// form of governance.
     pub fn transfer_authority(ctx: Context<TransferAuthority>) -> Result<()> {
         transfer_authority::handler(ctx)
@@ -39,6 +39,17 @@ pub mod spl_token_staking {
     /// Can only be invoked by the StakePool's authority.
     pub fn add_reward_pool(ctx: Context<AddRewardPool>, index: u8) -> Result<()> {
         add_reward_pool::handler(ctx, index)
+    }
+
+    /// Update various stakepool settings. Simply sum the settings together and pass as a single
+    /// number. Allowed settings:
+    /// * ESCAPE_HATCH_ENABLED -  1
+    /// * PLACEHOLDER_A - 2
+    /// * PLACEHOLDER_B - 4
+    ///
+    /// Can only be invoked by the StakePool's authority.
+    pub fn set_flags(ctx: Context<SetFlags>, flags: u8) -> Result<()> {
+        set_flags::handler(ctx, flags)
     }
 
     /// Deposit (aka Stake) a wallet's tokens to the specified [StakePool](state::StakePool).
