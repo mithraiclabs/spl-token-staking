@@ -25,7 +25,7 @@ describe("disable deposits flag", () => {
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const depositor1 = new anchor.web3.Keypair();
   const depositor2 = new anchor.web3.Keypair();
-  const stakePoolNonce = 15;
+  const stakePoolNonce = 16;
   const receiptNonce = 2;
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
