@@ -11,14 +11,16 @@ import {
 } from "@solana/spl-token";
 import { assert } from "chai";
 import {
+  DEPOSITS_DISABLED,
   ESCAPE_HATCH_ENABLED,
   addRewardPool,
   initStakePool,
 } from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
 import { assertParsedErrorStaking } from "./errors";
+import { BN } from "bn.js";
 
-describe("escape hatch withdrawals", () => {
+describe("disable deposits flag", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const depositor1 = new anchor.web3.Keypair();
@@ -76,8 +78,7 @@ describe("escape hatch withdrawals", () => {
     ]);
   });
 
-  it("Fail to withdraw locked tokens", async () => {
-    // deposit 1 token
+  it("Deposit is enabled - happy path", async () => {
     await deposit(
       program,
       stakePoolNonce,
@@ -90,27 +91,14 @@ describe("escape hatch withdrawals", () => {
       receiptNonce,
       [rewardVaultKey]
     );
-
-    let ix = await withdrawIx(receiptNonce);
-    try {
-      await program.provider.sendAndConfirm(
-        new anchor.web3.Transaction().add(ix),
-        [depositor1]
-      );
-      assert.ok(false);
-    } catch (err) {
-      assertParsedErrorStaking(err, "Stake is still locked");
-      return;
-    }
-    assert.isTrue(false, "TX should have failed");
   });
 
-  it("Admin triggers the escape hatch ", async () => {
+  it("Admin disables deposits ", async () => {
     let pool = await program.account.stakePool.fetch(stakePoolKey);
     assert.equal(pool.flags, 0);
 
     let escapeIx = await program.methods
-      .setFlags(ESCAPE_HATCH_ENABLED)
+      .setFlags(DEPOSITS_DISABLED)
       .accounts({
         authority: program.provider.publicKey,
         stakePool: stakePoolKey,
@@ -121,23 +109,29 @@ describe("escape hatch withdrawals", () => {
     );
 
     pool = await program.account.stakePool.fetch(stakePoolKey);
-    assert.equal(pool.flags, ESCAPE_HATCH_ENABLED);
+    assert.equal(pool.flags, DEPOSITS_DISABLED);
   });
 
-  it("Can now withdraw unlocked tokens", async () => {
-    let ix = await withdrawIx(receiptNonce);
-    await program.provider.sendAndConfirm(
-      new anchor.web3.Transaction().add(ix),
-      [depositor1]
-    );
-    // TODO check balances...
+  it("Can now no longer deposit", async () => {
+    let ix = await depositIx(stakePoolNonce);
+
+    try {
+      await program.provider.sendAndConfirm(
+        new anchor.web3.Transaction().add(ix),
+        [depositor1]
+      );
+      assert.ok(false);
+    } catch (err) {
+      assertParsedErrorStaking(err, "Deposits disabled by administrator");
+      return;
+    }
   });
 
-  it("Bad user tries to trigger the escape hatch - fails", async () => {
+  it("Bad user tries to disable deposits - fails", async () => {
     let badUser = anchor.web3.Keypair.generate();
 
     let escapeIx = await program.methods
-      .setFlags(ESCAPE_HATCH_ENABLED)
+      .setFlags(DEPOSITS_DISABLED)
       .accounts({
         authority: badUser.publicKey,
         stakePool: stakePoolKey,
@@ -160,40 +154,36 @@ describe("escape hatch withdrawals", () => {
    * A generic withdraw ix that notable is the same before/after escape hatch is engaged.
    * @returns
    */
-  const withdrawIx = async (receiptNonce: number) => {
+  const depositIx = async (nonce: number) => {
     const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [
         depositor1.publicKey.toBuffer(),
         stakePoolKey.toBuffer(),
-        new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
+        new anchor.BN(nonce).toArrayLike(Buffer, "le", 4),
         Buffer.from("stakeDepositReceipt", "utf-8"),
       ],
       program.programId
     );
 
     let ix = await program.methods
-      .withdraw()
+      .deposit(nonce, new BN(1_000_000), new BN(42_000))
       .accounts({
-        claimBase: {
-          owner: depositor1.publicKey,
-          stakePool: stakePoolKey,
-          stakeDepositReceipt: stakeReceiptKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
+        payer: depositor1.publicKey,
+        owner: depositor1.publicKey,
+        from: mintToBeStakedAccountKey,
+        stakePool: stakePoolKey,
         vault: vaultKey,
-        stakeMint,
-        from: stakeMintAccountKey,
-        destination: mintToBeStakedAccountKey,
+        stakeMint: stakeMint,
+        destination: stakeMintAccountKey,
+        stakeDepositReceipt: stakeReceiptKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
       .remainingAccounts([
         {
           pubkey: rewardVaultKey,
-          isWritable: true,
-          isSigner: false,
-        },
-        {
-          pubkey: depositorReward1AccountKey,
-          isWritable: true,
+          isWritable: false,
           isSigner: false,
         },
       ])

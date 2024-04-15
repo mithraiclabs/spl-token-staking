@@ -104,6 +104,9 @@ pub fn handler<'info>(
 
     {
         let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
+        if stake_pool.deposits_disabled(){
+            return err!(ErrorCode::DepositsDisabled);
+        }
         if lockup_duration < stake_pool.min_duration {
             return err!(ErrorCode::DurationTooShort);
         }

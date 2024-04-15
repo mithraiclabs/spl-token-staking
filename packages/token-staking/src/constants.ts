@@ -10,6 +10,8 @@ export const STAKE_DEPOSIT_RECEIPT_DISCRIMINATOR = [
 ];
 export const ESCAPE_HATCH_ENABLED = 1;
 
+export const DEPOSITS_DISABLED = 4;
+
 export const SPL_TOKEN_STAKING_ID_V0 =
   "STAKEkKzbdeKkqzKpLkNQD3SUuLgshDKCD7U8duxAbB";
 

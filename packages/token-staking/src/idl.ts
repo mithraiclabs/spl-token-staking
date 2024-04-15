@@ -590,7 +590,7 @@ export const _SplTokenStakingIDL = {
               "Each bit constrols a setting. Add settings together as needed. Settings supported:",
               "* `ESCAPE_HATCH_ENABLED` - 1",
               "* PLACEHOLDER_A - 2",
-              "* PLACEHOLDER_B - 4",
+              "* `DISABLE_DEPOSITS` - 4",
               "",
               "Do not access directly, use functions such as `escape_hatch_enabled`",
             ],
@@ -763,6 +763,11 @@ export const _SplTokenStakingIDL = {
       code: 6012,
       name: "DurationTooShort",
       msg: "Duration too short",
+    },
+    {
+      code: 6013,
+      name: "DepositsDisabled",
+      msg: "Deposits disabled by administrator",
     },
   ],
 } as const;

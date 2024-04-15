@@ -28,4 +28,13 @@ pub enum ErrorCode {
   InvalidStakePoolWeight, // 6011
   #[msg("Duration too short")]
   DurationTooShort, // 6012
+
+
+
+
+
+
+  
+  #[msg("Deposits disabled by administrator")]
+  DepositsDisabled, // TODO
 }

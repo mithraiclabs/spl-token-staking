@@ -24,6 +24,8 @@ pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 // Note: These are summed and passed to `flags`
 pub const ESCAPE_HATCH_ENABLED: u8 = 1;
 
+pub const DISABLE_DEPOSITS: u8 = 4;
+
 #[allow(non_camel_case_types)]
 /// Definitely not your primitive u128...but Anchor thinks it is...
 #[derive(Copy, Clone, Default, Zeroable, AnchorDeserialize, AnchorSerialize, Pod, Debug)]
@@ -129,7 +131,7 @@ pub struct StakePool {
     /// Each bit constrols a setting. Add settings together as needed. Settings supported:
     /// * `ESCAPE_HATCH_ENABLED` - 1
     /// * PLACEHOLDER_A - 2
-    /// * PLACEHOLDER_B - 4
+    /// * `DISABLE_DEPOSITS` - 4
     ///
     /// Do not access directly, use functions such as `escape_hatch_enabled`
     pub flags: u8,
@@ -149,6 +151,11 @@ impl StakePool {
     /// True if flag `ESCAPE_HATCH_ENABLED` active, false otherwise
     pub fn escape_hatch_enabled(&self) -> bool {
         (self.flags & 0b0000_0001) != 0
+    }
+
+    /// True if flag `DISABLE_DEPOSITS` enabled, false otherwise
+    pub fn deposits_disabled(&self) -> bool {
+        (self.flags & 0b0000_0100) != 0
     }
 
     pub fn get_claimed_amounts_of_reward_pools(&self) -> [u128; MAX_REWARD_POOLS] {
