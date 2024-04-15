@@ -74,6 +74,19 @@ impl<'info> ClaimBase<'info> {
                 return err!(ErrorCode::InvalidRewardPoolVaultIndex);
             }
 
+            let reward_vault_info = &remaining_accounts[reward_vault_account_index];
+            let owner_reward_account_info = &remaining_accounts[owner_account_index];
+            // assert that the remaining account indexes and reward pool
+            // indexes line up.
+            if reward_pool.reward_vault != reward_vault_info.key() {
+                msg!(
+                    "expected pool: {:?} but got {:?}",
+                    reward_pool.reward_vault,
+                    reward_vault_info.key()
+                );
+                return err!(ErrorCode::InvalidRewardPoolVault);
+            }
+
             let claimable_per_effective_stake = reward_pool
                 .rewards_per_effective_stake_u128()
                 .checked_sub(self.stake_deposit_receipt.claimed_amounts[index].as_u128())
@@ -91,9 +104,6 @@ impl<'info> ClaimBase<'info> {
                 remaining_accounts_index += 1;
                 continue;
             }
-
-            let reward_vault_info = &remaining_accounts[reward_vault_account_index];
-            let owner_reward_account_info = &remaining_accounts[owner_account_index];
 
             self.transfer_reward_from_pool_to_owner(
                 reward_vault_info.to_account_info(),

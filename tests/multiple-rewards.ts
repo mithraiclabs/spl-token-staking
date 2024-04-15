@@ -20,7 +20,7 @@ import {
 import { deposit } from "./utils";
 import { assertBNEqual } from "./genericTests";
 
-describe.only("multiple-rewards", () => {
+describe("multiple-rewards", () => {
   const program = anchor.workspace
     .SplTokenStaking as anchor.Program<SplTokenStaking>;
   const tokenProgram = splTokenProgram({ programId: TOKEN_PROGRAM_ID });
