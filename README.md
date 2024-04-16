@@ -145,3 +145,6 @@ claimed_amounts: Vec<u128>
 ```
 anchor build -p spl_token_staking -e GIT_SHA=$(git rev-parse HEAD) -e GIT_REF_NAME=$(git describe --tags) --verifiable
 ```
+
+### Test
+anchor test -- --features localnet

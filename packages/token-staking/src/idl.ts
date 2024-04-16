@@ -3,7 +3,7 @@ type Mutable<T> = {
 };
 
 export const _SplTokenStakingIDL = {
-  version: "1.1.4",
+  version: "1.1.5",
   name: "spl_token_staking",
   instructions: [
     {
@@ -112,6 +112,53 @@ export const _SplTokenStakingIDL = {
         },
       ],
       args: [],
+    },
+    {
+      name: "dangerouslyMintStakeMint",
+      docs: [
+        'DANGEROUSLY mint "stake_mint" of [StakePool](state::StakePool) to a destination TokenAccount.',
+      ],
+      accounts: [
+        {
+          name: "payer",
+          isMut: true,
+          isSigner: true,
+          docs: ["Payer of rent"],
+        },
+        {
+          name: "authority",
+          isMut: false,
+          isSigner: true,
+          docs: ["Authority of the StakePool"],
+        },
+        {
+          name: "stakeMint",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "destination",
+          isMut: true,
+          isSigner: false,
+        },
+        {
+          name: "stakePool",
+          isMut: true,
+          isSigner: false,
+          docs: ["StakePool of the `stake_mint` to be minted"],
+        },
+        {
+          name: "tokenProgram",
+          isMut: false,
+          isSigner: false,
+        },
+      ],
+      args: [
+        {
+          name: "amount",
+          type: "u64",
+        },
+      ],
     },
     {
       name: "addRewardPool",

@@ -34,6 +34,11 @@ pub mod spl_token_staking {
         transfer_authority::handler(ctx)
     }
 
+    /// DANGEROUSLY mint "stake_mint" of [StakePool](state::StakePool) to a destination TokenAccount.
+    pub fn dangerously_mint_stake_mint(ctx: Context<DangerouslyMintStakeMint>, amount: u64) -> Result<()> {
+        dangerously_mint_stake_mint::handler(ctx, amount)
+    }
+
     /// Add a [RewardPool](state::RewardPool) to an existing [StakePool](state::StakePool).
     ///
     /// Can only be invoked by the StakePool's authority.
