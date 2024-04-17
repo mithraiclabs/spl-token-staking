@@ -14,6 +14,7 @@ import {
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import {
+  DEPOSIT_IGNORES_LP,
   SCALE_FACTOR_BASE,
   SCALE_FACTOR_BASE_BN,
   SplTokenStaking,
@@ -664,4 +665,87 @@ describe("deposit", () => {
       mintToBeStakedAccountBefore.amount.sub(depositAmount)
     );
   });
+
+  it("Set DEPOSIT_IGNORES_LP - deposits now generate no lp tokens", async () => {
+    const nextNonce = await getNextUnusedStakeReceiptNonce(
+      program.provider.connection,
+      program.programId,
+      depositor.publicKey,
+      stakePoolKey
+    );
+    const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        depositor.publicKey.toBuffer(),
+        stakePoolKey.toBuffer(),
+        new anchor.BN(nextNonce).toArrayLike(Buffer, "le", 4),
+        Buffer.from("stakeDepositReceipt", "utf-8"),
+      ],
+      program.programId
+    );
+
+    const rewardsTransferAmount = new anchor.BN(10_000_000_000);
+    const rewardsPerEffectiveStake = rewardsTransferAmount.div(deposit1Amount);
+    const transferIx = createTransferInstruction(
+      getAssociatedTokenAddressSync(rewardMint1, program.provider.publicKey),
+      rewardVaultKey,
+      program.provider.publicKey,
+      rewardsTransferAmount.toNumber()
+    );
+
+    const [stakeMintAccountBefore, poolBefore] = await Promise.all([
+      tokenProgram.account.account.fetch(stakeMintAccountKey),
+      program.account.stakePool.fetch(stakePoolKey),
+    ]);
+
+    let ignoreIx = await program.methods
+      .setFlags(DEPOSIT_IGNORES_LP)
+      .accounts({
+        authority: program.provider.publicKey,
+        stakePool: stakePoolKey,
+      })
+      .instruction();
+    await program.provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(transferIx, ignoreIx)
+    );
+
+    let depositIx = await program.methods
+      .deposit(nextNonce, deposit2Amount, minDuration)
+      .accounts({
+        payer: depositor.publicKey,
+        owner: depositor.publicKey,
+        from: mintToBeStakedAccount,
+        stakeMint: stakeMint,
+        stakePool: stakePoolKey,
+        vault: vaultKey,
+        destination: stakeMintAccountKey,
+        stakeDepositReceipt: stakeReceiptKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .remainingAccounts([
+        {
+          pubkey: rewardVaultKey,
+          isWritable: false,
+          isSigner: false,
+        },
+      ])
+      .instruction();
+
+    await program.provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(depositIx), [depositor]
+    );
+
+
+    const [stakeMintAccountAfter, poolAfter] = await Promise.all([
+      tokenProgram.account.account.fetch(stakeMintAccountKey),
+      program.account.stakePool.fetch(stakePoolKey),
+    ]);
+
+    assert.equal(poolBefore.flags, 0);
+    assert.equal(poolAfter.flags, DEPOSIT_IGNORES_LP);
+    assertBNEqual(stakeMintAccountBefore.amount, stakeMintAccountAfter.amount);
+  });
+
+  // Note: If adding more deposit tests, remember the DEPOSIT_IGNORES_LP flag is enabled
 });

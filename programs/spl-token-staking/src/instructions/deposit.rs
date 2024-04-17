@@ -3,8 +3,8 @@ use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use crate::errors::ErrorCode;
 use crate::stake_pool_signer_seeds;
-use crate::state::{StakeDepositReceipt, StakePool};
 use crate::state::u128;
+use crate::state::{StakeDepositReceipt, StakePool};
 
 #[derive(Accounts)]
 #[instruction(nonce: u32)]
@@ -12,7 +12,7 @@ pub struct Deposit<'info> {
     // Payer to actually stake the mint tokens
     #[account(mut)]
     pub payer: Signer<'info>,
-    
+
     /// Owner of the StakeDepositReceipt, which may differ
     /// from the account staking.
     /// CHECK: No check needed since this account will own the StakeReceipt.
@@ -104,7 +104,7 @@ pub fn handler<'info>(
 
     {
         let mut stake_pool = ctx.accounts.stake_pool.load_mut()?;
-        if stake_pool.deposits_disabled(){
+        if stake_pool.deposits_disabled() {
             return err!(ErrorCode::DepositsDisabled);
         }
         if lockup_duration < stake_pool.min_duration {
@@ -143,7 +143,11 @@ pub fn handler<'info>(
         ctx.accounts.stake_deposit_receipt.effective_stake_u128(),
         stake_pool.max_weight,
     );
-    ctx.accounts
-        .mint_staked_token_to_user(effect_amount_staked_tokens)?;
+    
+    if !stake_pool.deposits_ignores_lp() {
+        ctx.accounts
+            .mint_staked_token_to_user(effect_amount_staked_tokens)?;
+    }
+
     Ok(())
 }

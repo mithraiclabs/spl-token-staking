@@ -92,9 +92,11 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
     ctx.accounts.validate_stake_pool_and_owner()?;
 
     let escape_hatch_enabled: bool;
+    let withdraw_ignores_lp: bool;
     {
         let mut stake_pool = ctx.accounts.claim_base.stake_pool.load_mut()?;
         escape_hatch_enabled = stake_pool.escape_hatch_enabled();
+        withdraw_ignores_lp = stake_pool.withdraw_ignores_lp();
 
         // Recalculate rewards for stake prior, so withdrawing user can receive all rewards
         stake_pool.recalculate_rewards_per_effective_stake(&ctx.remaining_accounts, 2usize)?;
@@ -119,7 +121,9 @@ pub fn handler<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Resul
     }
 
     ctx.accounts.transfer_staked_tokens_to_owner()?;
-    ctx.accounts.burn_stake_weight_tokens_from_owner()?;
+    if !withdraw_ignores_lp {
+        ctx.accounts.burn_stake_weight_tokens_from_owner()?;
+    }
     // claim all unclaimed rewards
     let claimed_amounts = ctx
         .accounts

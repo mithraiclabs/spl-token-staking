@@ -25,6 +25,8 @@ pub const SECONDS_PER_DAY: u64 = 60 * 60 * 24;
 pub const ESCAPE_HATCH_ENABLED: u8 = 1;
 
 pub const DISABLE_DEPOSITS: u8 = 4;
+pub const DEPOSIT_IGNORES_LP: u8 = 8;
+pub const WITHDRAW_IGNORES_LP: u8 = 16;
 
 #[allow(non_camel_case_types)]
 /// Definitely not your primitive u128...but Anchor thinks it is...
@@ -129,9 +131,11 @@ pub struct StakePool {
     /** Bump seed for stake_mint */
     pub bump_seed: u8,
     /// Each bit constrols a setting. Add settings together as needed. Settings supported:
-    /// * `ESCAPE_HATCH_ENABLED` - 1
-    /// * PLACEHOLDER_A - 2
-    /// * `DISABLE_DEPOSITS` - 4
+    /// * `ESCAPE_HATCH_ENABLED` - 1, allows withdraws regardless of lockup time
+    /// * `PLACEHOLDER_A` - 2
+    /// * `DISABLE_DEPOSITS` - 4, causes the deposit ix to always fail
+    /// * `DEPOSIT_IGNORES_LP` - 8, the deposit ix will not mint any lp token
+    /// * `WITHDRAW_IGNORES_LP` - 16, the withdraw ix will not burn any lp token
     ///
     /// Do not access directly, use functions such as `escape_hatch_enabled`
     pub flags: u8,
@@ -147,15 +151,21 @@ impl StakePool {
     pub fn total_weighted_stake_u128(&self) -> primitive::u128 {
         self.total_weighted_stake.as_u128()
     }
-
     /// True if flag `ESCAPE_HATCH_ENABLED` active, false otherwise
     pub fn escape_hatch_enabled(&self) -> bool {
         (self.flags & 0b0000_0001) != 0
     }
-
     /// True if flag `DISABLE_DEPOSITS` enabled, false otherwise
     pub fn deposits_disabled(&self) -> bool {
         (self.flags & 0b0000_0100) != 0
+    }
+    /// True if flag `DEPOSIT_IGNORES_LP` enabled, false otherwise
+    pub fn deposits_ignores_lp(&self) -> bool {
+        (self.flags & 0b0000_1000) != 0
+    }
+    /// True if flag `WITHDRAW_IGNORES_LP` enabled, false otherwise
+    pub fn withdraw_ignores_lp(&self) -> bool {
+        (self.flags & 0b0001_0000) != 0
     }
 
     pub fn get_claimed_amounts_of_reward_pools(&self) -> [u128; MAX_REWARD_POOLS] {

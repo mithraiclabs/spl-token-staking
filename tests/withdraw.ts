@@ -13,7 +13,11 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { addRewardPool, initStakePool } from "@mithraic-labs/token-staking";
+import {
+  WITHDRAW_IGNORES_LP,
+  addRewardPool,
+  initStakePool,
+} from "@mithraic-labs/token-staking";
 import { deposit } from "./utils";
 import { assertBNEqual } from "./genericTests";
 
@@ -337,4 +341,102 @@ describe("withdraw", () => {
     }
     assert.isTrue(false, "TX should have failed");
   });
+
+  it("Set WITHDRAW_IGNORES_LP - withdraws no longer burn lp tokens", async () => {
+    const receiptNonce = 0;
+    const [stakeReceiptKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        depositor1.publicKey.toBuffer(),
+        stakePoolKey.toBuffer(),
+        new anchor.BN(receiptNonce).toArrayLike(Buffer, "le", 4),
+        Buffer.from("stakeDepositReceipt", "utf-8"),
+      ],
+      program.programId
+    );
+
+    const [sTokenAccountBeforeDeposit, stakeMintBeforeDeposit] =
+      await Promise.all([
+        tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
+        tokenProgramInstance.account.mint.fetch(stakeMint),
+      ]);
+
+    // deposit 1 token
+    await deposit(
+      program,
+      stakePoolNonce,
+      mintToBeStaked,
+      depositor1,
+      mintToBeStakedAccountKey,
+      stakeMintAccountKey,
+      new anchor.BN(1_000_000_000),
+      new anchor.BN(0),
+      receiptNonce,
+      [rewardVaultKey]
+    );
+
+    const [sTokenAccountAfterDeposit, stakeMintAfterDeposit] =
+      await Promise.all([
+        tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
+        tokenProgramInstance.account.mint.fetch(stakeMint),
+      ]);
+
+    assert.isAbove(
+      sTokenAccountAfterDeposit.amount.toNumber(),
+      sTokenAccountBeforeDeposit.amount.toNumber()
+    );
+    assert.isAbove(
+      stakeMintAfterDeposit.supply.toNumber(),
+      stakeMintBeforeDeposit.supply.toNumber()
+    );
+
+    let ignoreIx = await program.methods
+      .setFlags(WITHDRAW_IGNORES_LP)
+      .accounts({
+        authority: program.provider.publicKey,
+        stakePool: stakePoolKey,
+      })
+      .instruction();
+    await program.provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(ignoreIx)
+    );
+
+    await program.methods
+      .withdraw()
+      .accounts({
+        claimBase: {
+          owner: depositor1.publicKey,
+          stakePool: stakePoolKey,
+          stakeDepositReceipt: stakeReceiptKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        },
+        vault: vaultKey,
+        stakeMint,
+        from: stakeMintAccountKey,
+        destination: mintToBeStakedAccountKey,
+      })
+      .remainingAccounts([
+        {
+          pubkey: rewardVaultKey,
+          isWritable: true,
+          isSigner: false,
+        },
+        {
+          pubkey: depositorReward1AccountKey,
+          isWritable: true,
+          isSigner: false,
+        },
+      ])
+      .signers([depositor1])
+      .rpc({ skipPreflight: true });
+
+    const [sTokenAccountAfter, stakeMintAfter] = await Promise.all([
+      tokenProgramInstance.account.account.fetch(stakeMintAccountKey),
+      tokenProgramInstance.account.mint.fetch(stakeMint),
+    ]);
+
+    assertBNEqual(sTokenAccountAfter.amount, sTokenAccountAfterDeposit.amount);
+    assertBNEqual(stakeMintAfter.supply, stakeMintAfterDeposit.supply);
+  });
+
+  // Note: If adding more withdraw tests, remember the WITHDRAW_IGNORES_LP flag is enabled
 });

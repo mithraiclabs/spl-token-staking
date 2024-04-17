@@ -163,7 +163,7 @@ export const createDepositorSplAccounts = async (
   depositor: anchor.web3.Keypair,
   stakePoolNonce: number,
   mintStake = mintToBeStaked,
-  mintToBeStakedAmount: number | bigint = 10_000_000_000
+  mintToBeStakedAmount: number | bigint = 100_000_000_000
 ) => {
   const [stakePoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -197,7 +197,7 @@ export const createDepositorSplAccounts = async (
     mintStake,
     TOKEN_PROGRAM_ID
   );
-  // mint 10 stakeMint to provider wallet
+  // mint 100 stakeMint to provider wallet
   const mintIx = createMintToInstruction(
     mintStake,
     mintToBeStakedAccount,
