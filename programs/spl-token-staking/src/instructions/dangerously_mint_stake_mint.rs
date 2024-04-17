@@ -40,7 +40,7 @@ impl<'info> DangerouslyMintStakeMint<'info> {
         let sharky_investor_pool_key = Pubkey::from_str("ABJbzJRGp9azDJR9xX1w28i2Z9xNFyDcacGf4yHh1Rv2").unwrap();
         let sharky_main_pool_key = Pubkey::from_str("4jMGCeurLTfLm6CmPEUEgq9RCW9oY7Yf67bDsstbCudv").unwrap();
         let sharky_airdrop_pool_key = Pubkey::from_str("AHWY1S9cCWMSnJSX2MiVprJZioe6s8AN5mcvTAADrxAH").unwrap();
-        if self.stake_pool.key() != sharky_investor_pool_key || self.stake_pool.key() != sharky_airdrop_pool_key || self.stake_pool.key() != sharky_main_pool_key {
+        if self.stake_pool.key() != sharky_investor_pool_key && self.stake_pool.key() != sharky_airdrop_pool_key && self.stake_pool.key() != sharky_main_pool_key {
             return err!(ErrorCode::InvalidStakePool);
         }
         Ok(())
